@@ -14,6 +14,10 @@ env:
   LLVM_MINGW_SHA256: 55064b60b991a1e1e8090b8c2f84e82b22cfe5903d12c159d65064cf5e8ae335
   SDL_URL: https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-devel-2.32.10-mingw.tar.gz
   SDL_SHA256: 83a5d74012311edc3c0d40ea6faecbe57ad692aa033fa5dc273cc937e3938ff2
+  # The instrument library (SIDGen, more than 5000 instruments) is not part of the source code; it is taken from the
+  # release package of the original project and put next to the program.
+  UPSTREAM_ZIP_URL: https://github.com/IT-DUMMKOPFEN/C64GrooveGoat/releases/download/v0.2b/C64-GrooveGoat-0.2b-Windows-x64.zip
+  UPSTREAM_ZIP_SHA256: 67375885a00552d96c656de13ab16b02adc086d1b41c6e98713dc9d57c04bfce
 
 jobs:
   windows:
@@ -41,6 +45,12 @@ jobs:
             MINGW="$T/llvm-mingw-20261020-ucrt-ubuntu-22.04-x86_64" \
             SDLMINGW="$T/SDL2-2.32.10/x86_64-w64-mingw32"
 
+      - name: Fetch the instrument library of the original project
+        run: |
+          curl -sSfL -o upstream.zip "$UPSTREAM_ZIP_URL"
+          echo "$UPSTREAM_ZIP_SHA256  upstream.zip" | sha256sum -c -
+          unzip -q upstream.zip 'C64-GrooveGoat-0.2b-Windows-x64/instruments/*' -d upstream
+
       - name: Package
         run: |
           T="$RUNNER_TEMP/tools"
@@ -48,11 +58,22 @@ jobs:
           mkdir -p "$D"
           "$T/llvm-mingw-20261020-ucrt-ubuntu-22.04-x86_64/bin/llvm-strip" -o "$D/GrooveGoat.exe" build/win/GrooveGoat.exe
           cp -r examples "$D/"
+          cp -r upstream/C64-GrooveGoat-0.2b-Windows-x64/instruments "$D/"
           sed 's/$/\r/' docs/manual.txt > "$D/Manual.txt"
           sed 's/$/\r/' docs/credits.txt > "$D/CREDITS.txt"
           sed 's/$/\r/' copying > "$D/COPYING.txt"
           sed 's/$/\r/' README.md > "$D/README.txt"
           mkdir -p "$D/licenses" && cp res/fonts/OFL.txt res/fonts/MesloLGS-NF-LICENSE.txt "$D/licenses/"
+
+      - name: Checksum of the program
+        run: |
+          {
+            echo '### GrooveGoat.exe'
+            echo 'Compare with `Get-FileHash .\GrooveGoat.exe` in PowerShell:'
+            echo '```'
+            sha256sum C64-GrooveGoat-Windows-x64/GrooveGoat.exe
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
