@@ -58,7 +58,7 @@ void fillarea(int x, int y, int w, int h, int color, int glyph);
 void drawpanel(int x, int y, int w, int h, const char *title, int active);
 void drawimage(int x, int y, const char *name, int cellsw, int cellsh);
 void drawrainbow(int x, int y, int length);
-#define MAX_CANVAS 4
+#define MAX_CANVAS 5
 #define CANVAS_MAXCW 48
 #define CANVAS_MAXCH 8
 #define CANVAS_STRIDE (CANVAS_MAXCW * 16)
@@ -85,6 +85,7 @@ extern int mouseb, prevmouseb;
 extern int mouseheld;
 extern int mousex, mousey;
 extern int mousepx, mousepy;   // mouse position in 1/16 (x) and 1/32 (y) cell units
+extern double mousefx, mousefy;                 // the same, in cells with the fraction (for drawing)
 extern int mousewheel;
 extern int theme;
 extern unsigned bigwindow;

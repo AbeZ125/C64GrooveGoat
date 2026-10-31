@@ -40,6 +40,8 @@ by Lasse Öörni (Cadaver) and the
   under the cursor is explained in plain words (`SHIFT+G` hides it)
 - The same for the wavetable, and a small waveform picture (single or combined shapes) next to the ADSR
   graph that follows the cursor in the wavetable
+- A step editor (`SHIFT+E` in the wave, pulse, filter or speed table): the program as one box per tick, a draw pad
+  to draw the pulse width, filter cutoff or pitch with the mouse, and an arpeggio builder (0 4 7, 0 3 7 and more)
 - Backup copies: `NAME.bak` on save, automatic backup every 2 minutes (newest 10 kept),
   crash recovery on the next start
 - File formats: GoatTracker 2 `.sng` (1 SID), GoatTracker Stereo `.sng` (2 SIDs),

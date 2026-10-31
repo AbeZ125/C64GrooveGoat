@@ -215,6 +215,12 @@ void tablecommands(void)
     if (shiftpressed) togglecommandpanel();
     break;
 
+    case KEY_E:
+    if (shiftpressed)
+    {
+      if (editorInfo.etnum == STBL) showspeededitor();
+      else showstepeditor();
+    }
     break;
 
     case KEY_U:

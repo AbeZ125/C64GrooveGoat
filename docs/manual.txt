@@ -622,6 +622,7 @@ are full, a message tells you to delete unused table data first (SHIFT+O in the 
 |  SHIFT+W / S  Transpose octave up / down, or multiply / divide pulse and filter speeds by 2
 |  SHIFT+I      Summary of the pulse, wave or filter table program (see below)
 |  SHIFT+H      Show / hide the side list of the codes of the table under the cursor
+|  SHIFT+E      Step editor for the wave, pulse or filter program under the cursor (see below)
 |  SHIFT+L      Convert a limit based modulation step to a time based step
 |  SHIFT+N      Negate a speed (pulse/filter) or relative note (wave)
 |  SHIFT+O      Optimize the table (remove unused rows)
@@ -732,6 +733,59 @@ Examples:
 
 The pattern commands 0XY, 8XY and EXY can not be executed from the wavetable.
 
+### Step editor
+
+SHIFT+E in the wavetable or the pulsetable opens the step editor. Instead of table rows it shows the program
+as one box per tick (a tick is one frame): the wave editor gives every tick a waveform and a note, the pulse
+editor gives every tick a pulse width. The small pictures show the shape of each tick.
+
+|  LEFT / RIGHT   Choose a tick (or click it)
+|  + / -          Add a tick after the chosen one / remove the chosen tick (or click [ + ] [ - ])
+|  T S P N        Wave editor: toggle triangle, sawtooth, pulse, noise
+|  G Y R X        Wave editor: toggle gate, sync, ring modulation, test bit
+|  UP / DOWN      Wave editor: note in semitones (SHIFT = octave); pulse editor: the pulse width
+|  A              Wave editor: switch between a note relative to the played note and an absolute note
+|  L              The program jumps back to the chosen tick after the last one (L again: no loop)
+|  SPACE          Play a test note with the current instrument (SHIFT+SPACE: release)
+|  U              Live on / off
+|  ENTER / ESC    Keep the changes / undo all changes
+|  Mouse          Click and drag in the draw pad (see below)
+
+Every key has a button in the window as well (shape, bits, note and width steps, loop, play, live, keep and
+undo), so the keys do not have to be remembered. A button that is lit is switched on for the chosen tick.
+
+DRAWING WITH THE MOUSE. Under the ticks there is a draw pad with one bar per tick. Press the mouse button in
+the pad and drag: every tick you pass over gets the height of the mouse, and a fast stroke is filled in
+between ticks, so a curve drawn from left to right is a sweep. In the pulse editor the height is the pulse
+width, in the filter editor the cutoff, and in the wave editor the pitch: the note of each tick relative to the
+played note, from -24 to +24 semitones (the middle line is the played note itself). Values snap to whole
+steps (1.6% of the width, 4 cutoff steps, a semitone); hold SHIFT while drawing to switch snapping off for
+width and cutoff. A tick with an absolute note is shown as a dotted line in the middle and is not changed by
+drawing; switch it to RELATIVE (key A) first. The waveform of a tick (triangle, sawtooth, pulse, noise) is a
+choice of the SID chip, not a curve, so it is still chosen with the shape buttons. Drawing is live like every
+other change.
+
+ARPEGGIOS. The wave editor builds arpeggios: the program steps through the notes of a chord, one note
+after the other, and repeats. Click a chord button and the wave program is made at once: MAJ (0 4 7), MIN
+(0 3 7), SUS4 (0 5 7), DIM (0 3 6), AUG (0 4 8), MAJ7 (0 4 7 11), MIN7 (0 3 7 10), MAJ+8 (0 4 7 12), MIN+8
+(0 3 7 12), OCT (0 12), 5TH (0 7) and 5TH+8 (0 7 12). The numbers are semitones above the note that is
+played. TYPE... asks for your own list, for example "0 3 7" (up 3, then up 7) or "0 5 9 12"; separate the
+numbers with spaces or commas, a minus sign goes down. The Speed buttons set how many ticks each note lasts
+(1T = the fastest, a new note every frame; the time per note is shown on the first Arp row), and UP / UP-DOWN
+chooses between 0 4 7 0 4 7 ... and 0 4 7 4 0 4 7 4 ... The waveform of the chosen tick is used for every
+note, and the program loops from the first tick. An arpeggio can take 16 ticks at most (notes times ticks per
+note, and twice the notes minus two for UP-DOWN); the editor says so if it is too long. Afterwards the ticks
+can be changed like any others, for example drawing the notes with the mouse. Use the instrument's wave table
+pointer as usual: the arpeggio runs each time a note starts.
+
+For example 5 ticks with square, square, pulse, noise and a loop makes the rows
+"41 00 / 00 80 / ..." by itself: a run of identical ticks becomes a delay row, and in the pulse editor a
+steady sweep becomes one modulation row. With Live on (the default) the table follows every change, so a
+playing note changes at once; ESC puts the old rows back. The new program replaces the old one in its
+place: it may use the rows of the old program and the empty rows after it, but never the rows of the next
+program. If it does not fit, the editor says so. Programs with pattern commands, or longer than 16
+ticks, are edited in the table.
+
 ### Playing row highlight
 
 While a song or a test note plays, the row of each table that the voice is on is highlighted in the table
@@ -739,6 +793,24 @@ panel: the wave and pulse rows being executed (a row stays lit while it waits or
 of the voice's SID, and the speedtable row used by the voice's portamento or vibrato (also the instrument's
 own vibrato). The voice is the one being edited if it plays the current instrument, otherwise another voice
 playing it. In the pulse and wave summary windows the playing row is marked with a blue *.
+
+### Speedtable editor
+
+SHIFT+E in the speedtable opens the speedtable editor for the row under the cursor. A speedtable row is
+used in three ways, and the editor shows it the way it is used (it picks the one the row is used as, and
+the buttons VIBRATO, PORTAMENTO and FUNKTEMPO, or the keys 1 2 3, switch the view):
+
+|  Vibrato      Speed (time until the direction changes) and depth; the picture shows the pitch over time
+|  Portamento   The speed as a 16-bit number, with the picture of the pitch over the first second
+|  Funktempo    Two tempos, and a picture of how the rows alternate
+
+NOTE INDEPENDENT (key I) switches the row to the form where the depth or speed follows the size of the note
+(a shift: 1/2^n of the step to the next note per tick). The presets are starting points. The text under the
+picture says in words what the row does (vibrato rate in Hz and depth in cents at A-4, portamento in semitones
+per second, tempos in frames and milliseconds) and where the row is used: which instruments, pattern commands
+and wavetable rows point at it. PGUP / PGDN or the buttons go to the previous / next row, LEFT / RIGHT choose
+the value, UP / DOWN change it (SHIFT = bigger steps). The row follows every change at once, so a playing note
+changes with it; ESC puts the old values back and ENTER keeps them.
 
 ### Filtertable summary and editor
 
@@ -749,6 +821,12 @@ language, a graph of the cutoff over time (with a marker on the playing position
 (level over frequency) at four moments of the program. The cutoff frequencies are given for an 8580; a 6581 differs
 from chip to chip. A set row ($80-$F0) directly followed by a cutoff row ($00) happens in the same tick, as the
 manual says above. An empty row $00 $00 is not a stop: it sets the cutoff to 0.
+
+SHIFT+E in the filtertable opens the step editor with one bar per tick (the height is the cutoff), the passband
+buttons LOW BAND HIGH (several together give a notch or band-reject), resonance, the voices, steps of the cutoff,
+presets, and SWEEP UP / SWEEP DOWN to spread the cutoff over all ticks. The picture shows the response of the filter
+for the chosen tick. Everything else works like the wave and pulse step editor. A filter program that changes the
+passband or the voices part-way is edited in the table.
 
 ### Table codes list
 

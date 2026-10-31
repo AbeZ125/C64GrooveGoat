@@ -33,6 +33,7 @@ int mousex = 0;
 int mousey = 0;
 int mousepx = 0;
 int mousepy = 0;
+double mousefx = 0, mousefy = 0;
 int mousewheel = 0;
 int mouseheld = 0;
 int theme = THEME_NIGHT;
@@ -901,6 +902,8 @@ void getkey(void)
   mousey = win_mousey / (CELLH * (scale ? scale : 1));
   mousepx = win_mousex * 16 / (CELLW * (scale ? scale : 1));
   mousepy = win_mousey * 32 / (CELLH * (scale ? scale : 1));
+  mousefx = (double)win_mousex / (CELLW * (scale ? scale : 1));
+  mousefy = (double)win_mousey / (CELLH * (scale ? scale : 1));
   if (mousex >= MAX_COLUMNS) mousex = MAX_COLUMNS - 1;
   if (mousey >= MAX_ROWS) mousey = MAX_ROWS - 1;
   mousewheel = win_mousewheel;

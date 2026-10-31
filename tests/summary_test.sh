@@ -9,5 +9,7 @@ cc -O2 -Wall -o build/wsummary_test tests/wsummary_test.c src/gwsummary.c src/gs
 build/wsummary_test
 cc -O2 -Wall -o build/cmdsummary_test tests/cmdsummary_test.c src/gcmdsummary.c src/gwsummary.c src/gsummary.c -lm
 build/cmdsummary_test
+cc -O2 -Wall -o build/stepedit_test tests/stepedit_test.c src/gstepedit.c src/gwsummary.c src/gfsummary.c src/gsummary.c -lm
+build/stepedit_test
 cc -O2 -Wall -o build/fsummary_test tests/fsummary_test.c src/gfsummary.c src/gsummary.c -lm
 build/fsummary_test
