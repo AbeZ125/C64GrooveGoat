@@ -15,3 +15,5 @@ cc -O2 -Wall -o build/fsummary_test tests/fsummary_test.c src/gfsummary.c src/gs
 build/fsummary_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/midiparse_test tests/midiparse_test.c src/gmidiparse.c
 build/midiparse_test
+cc -O2 -Wall -fsanitize=address,undefined -o build/keylayout_test tests/keylayout_test.c src/gkeylayout.c
+build/keylayout_test

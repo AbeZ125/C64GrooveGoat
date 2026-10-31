@@ -80,6 +80,7 @@ unsigned mastervolume = 80;
 unsigned showwelcome = 1;
 unsigned kbdlayoutsetting = 2;
 unsigned showpiano = 1;        // piano keyboard above the status bar
+unsigned keyboardsetting = 0;        // the on-screen piano is shown (saved in the config)
 unsigned fontsetting = 0;            // the screen font, an index into res_fontnames
 float basepitch = 0.0f;
 float equaldivisionsperoctave = 12.0f;
@@ -509,6 +510,7 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
   setfont(fontsetting);
+  showkeyboard = keyboardsetting != 0;
 
   // Keyboard layout: detect from the system keymap on the first start
   if (kbdlayoutsetting > 1)
@@ -705,6 +707,7 @@ static void loadconfig(void)
   getparam(configfile, &showpiano);
   getparam(configfile, &prgpiano);
   getparam(configfile, &fontsetting);
+  getparam(configfile, &keyboardsetting);
   fclose(configfile);
   showpiano &= 1;
   prgpiano &= 1;
@@ -769,7 +772,8 @@ static void saveconfig(void)
     ";Keyboard layout for shortcuts (0 = EN QWERTY, 1 = DE QWERTZ, 2 = detect)\n%d\n\n"
     ";Show the piano keyboard (0 = no, 1 = yes)\n%d\n\n"
     ";Piano keyboard on the screen of runnable PRGs (0 = no, 1 = yes)\n%d\n\n"
-    ";Screen font (0 = Fira Code, 1 = MesloLGS NF)\n%d\n\n",
+    ";Screen font (0 = Fira Code, 1 = MesloLGS NF)\n%d\n\n"
+    ";On-screen piano (0 = hidden, 1 = shown)\n%d\n\n",
     b,
     mr,
     hardsid,
@@ -818,7 +822,8 @@ static void saveconfig(void)
     kbdlayout,
     showpiano,
     prgpiano,
-    fontsetting);
+    fontsetting,
+    showkeyboard);
   fclose(configfile);
 }
 
@@ -903,6 +908,7 @@ static void runautotest(void)
   if (sids) changenumsids(atoi(sids));
   if (th) settheme(atoi(th));
   if (getenv("GG_PLAY")) initsong(0, PLAY_BEGINNING);
+  if (getenv("GG_KEYBOARD")) showkeyboard = 1;
   if (getenv("GG_SCREEN"))
   {
     const char *scr = getenv("GG_SCREEN");
@@ -1027,6 +1033,7 @@ void waitkeymouse(void)
     if (mousewheel) break;
     if (win_dropfile[0]) break;
     if (midipump()) break;
+    if (keyboard_busy()) break;
   }
 
   converthex();
@@ -1207,6 +1214,13 @@ void docommand(void)
     rawkey = 0;
   }
 
+  if ((altpressed) && (!ctrlpressed) && (!metapressed) && (!shiftpressed) && (rawkey == KEY_K))
+  {
+    showkeyboard ^= 1;
+    key = 0;
+    rawkey = 0;
+  }
+
   GTUNDO_OBJECT *ed = undoCreateEditorInfo();
   int oldundo = undoCounter;
 
@@ -1323,6 +1337,11 @@ static void buttoncommand(int id, int param)
     case BTN_EXPORTVIDEO: exportaudio(1); break;
     case BTN_THEME: togglethemekey(); break;
     case BTN_FONT: cyclefont(); break;
+    case BTN_KEYS: showkeyboard ^= 1; break;
+    case BTN_KEYOCT:
+      if ((param < 0) && (editorInfo.epoctave > 0)) editorInfo.epoctave--;
+      if ((param > 0) && (editorInfo.epoctave < 7)) editorInfo.epoctave++;
+      break;
     case BTN_HELP: onlinehelp(0, 0); break;
     case BTN_MANUAL: showmanual(); break;
     case BTN_HISTORY: showhistory(); break;
@@ -1465,6 +1484,9 @@ void mousecommands(void)
   int param = 0;
   int id;
   int click = (mouseb) && (!prevmouseb);
+
+  // The on-screen piano takes its clicks first
+  if (keyboardmouse()) return;
 
   // Mouse wheel scrolls the panel below the pointer
   if (mousewheel)

@@ -828,6 +828,26 @@ presets, and SWEEP UP / SWEEP DOWN to spread the cutoff over all ticks. The pict
 for the chosen tick. Everything else works like the wave and pulse step editor. A filter program that changes the
 passband or the voices part-way is edited in the table.
 
+### On-screen piano
+
+The Keys button in the header of the pattern panel (or ALT+K) shows a piano over the lower rows of the pattern
+panel: 32 keys, from the C of the current octave to the G two octaves higher (the octave you set with the Octave
+button or its keys; the - and + in the piano header change it as well). The X closes it. Whether it is shown is
+saved in the configuration file.
+
+|  Click a key      Plays the note with the chosen instrument, and in the note column of the pattern editor
+|                   enters it at the cursor, like a key of the computer keyboard (RECORD and the advance
+|                   setting apply). Releasing the mouse releases the note
+|  Drag over keys   Plays the keys you slide over (a glissando); only the first one is entered
+|
+|  Orange           A key that you or a MIDI keyboard hold
+|  Green            A key that a voice is playing, from the song or a test note
+|  < lower, higher >  A note is playing outside the 32 keys: change the octave to see it
+
+Green shows the note of the voice as the song plays it (the arpeggio steps of the wavetable are not shown, only
+the note that was started). The piano covers the last pattern rows of the panel; the cursor row stays in the
+middle of the panel, so it is not hidden.
+
 ### MIDI input
 
 A MIDI keyboard or controller can play the editor (macOS build). The program connects to every MIDI source it

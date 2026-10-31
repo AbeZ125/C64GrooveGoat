@@ -55,9 +55,14 @@
 
 #define PGUPDNREPEAT 8
 
+extern int showkeyboard;
 void editor_noteon(int trackernote, int record);   // a note from the MIDI keyboard or the on-screen piano
 void editor_noteoff(void);
 int editor_heldnote(void);                         // the tracker note held on the MIDI keyboard, or -1
+void drawkeyboard(void);
+int keyboardmouse(void);
+int keyboard_busy(void);                           // a piano key is held with the mouse
+
 #ifndef GOATTRK2_C
 extern int menu;
 //extern int editorInfo.editmode;

@@ -57,6 +57,7 @@ static const char *genkeys[] = {
   "F10           Load song/instrument",
   "F11           Save song/instrument",
   "F12           This screen",
+  "ALT+K         On-screen piano",
   "SHIFT+F1-F3   Follow play begin/pos/patt.",
   "SHIFT+F4      Mute current channel",
   "SHIFT+F5-F6   Change speed multiplier",

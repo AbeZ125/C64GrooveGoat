@@ -91,6 +91,8 @@ static const char *buttonhint(int id)
     case BTN_EXPORTAUDIO: return "Export audio: WAV (also single voices) or MP3 - Ctrl+F9";
     case BTN_EXPORTVIDEO: return "Export an MP4 video (720p) with an oscilloscope for every voice";
     case BTN_THEME: return "Switch between the night (C64 blue) and the day theme";
+    case BTN_KEYS: return "On-screen piano: click the keys to play and enter notes (also ALT+K)";
+    case BTN_KEYOCT: return "Move the piano one octave down / up";
     case BTN_FONT:
     {
       static char fonttip[100];
@@ -332,6 +334,7 @@ static void drawpatterns(void)
   sprintf(buf, "%d SID%s  %d channels", numsids, numsids > 1 ? "s" : "", numchannels);
   printtext(PATT_X + PATT_W - strlen(buf) - 1, PATT_Y, MKCOL(C_HEADERTEXT, editorInfo.editmode == EDIT_PATTERN ? C_BUTTONHI : C_HEADER), buf);
   ui_drawbutton(PATT_X + PATT_W - (int)strlen(buf) - 7, PATT_Y, " Aa ", BTN_FONT, 0, 0);
+  ui_drawbutton(PATT_X + PATT_W - (int)strlen(buf) - 14, PATT_Y, " Keys ", BTN_KEYS, 0, showkeyboard);
 
   // Tool row: transpose, mark, select pattern, cut / copy / paste
   {
@@ -1064,6 +1067,7 @@ void printstatus(void)
   drawtoolbar();
   drawsettingsbar();
   drawpatterns();
+  drawkeyboard();
   printglyph(PATT_W, PATT_Y, MKCOL(8, 0), ' ');
   draworderlist();
   printblankc(RP_X, ORD_ROWS_Y + VISIBLEORDERCHNS, MKCOL(8, 0), RP_W);
