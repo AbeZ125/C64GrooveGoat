@@ -46,6 +46,8 @@ by Lasse Öörni (Cadaver) and the
 - MIDI keyboard input (macOS): notes are entered in the pattern editor and played as test notes, a program change
   chooses the instrument
 - A clickable on-screen piano of 32 keys (`ALT+K`) that lights up for the keys you hold and the notes the voices play
+- A line under the orderlist that explains the entry under the cursor (pattern, repeat, transpose, restart), with a
+  guide in the help screen and the manual
 - Backup copies: `NAME.bak` on save, automatic backup every 2 minutes (newest 10 kept),
   crash recovery on the next start
 - File formats: GoatTracker 2 `.sng` (1 SID), GoatTracker Stereo `.sng` (2 SIDs),

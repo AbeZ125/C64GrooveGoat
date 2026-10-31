@@ -6,6 +6,7 @@
 #define GDISPLAY_C
 
 #include "goattrk2.h"
+#include "gordhint.h"
 #include "gres.h"
 #include "gpiano.h"
 
@@ -1071,6 +1072,12 @@ void printstatus(void)
   printglyph(PATT_W, PATT_Y, MKCOL(8, 0), ' ');
   draworderlist();
   printblankc(RP_X, ORD_ROWS_Y + VISIBLEORDERCHNS, MKCOL(8, 0), RP_W);
+  if (editorInfo.editmode == EDIT_ORDERLIST)      // what the entry under the cursor does
+  {
+    char hint[80];
+    if (order_hint(songorder[editorInfo.esnum][editorInfo.eschn], songlen[editorInfo.esnum][editorInfo.eschn], editorInfo.eseditpos, hint, sizeof hint))
+      printtext(RP_X + 1, ORD_ROWS_Y + VISIBLEORDERCHNS, MKCOL(14, 0), hint);
+  }
   drawinstrument();
   printblankc(RP_X, ADSR_Y + 3, MKCOL(8, 0), RP_W);
   drawtables();

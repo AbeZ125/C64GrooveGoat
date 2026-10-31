@@ -909,6 +909,11 @@ static void runautotest(void)
   if (th) settheme(atoi(th));
   if (getenv("GG_PLAY")) initsong(0, PLAY_BEGINNING);
   if (getenv("GG_KEYBOARD")) showkeyboard = 1;
+  if (getenv("GG_ORDERPOS"))
+  {
+    editorInfo.editmode = EDIT_ORDERLIST;
+    editorInfo.eseditpos = atoi(getenv("GG_ORDERPOS"));
+  }
   if (getenv("GG_SCREEN"))
   {
     const char *scr = getenv("GG_SCREEN");

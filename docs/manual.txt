@@ -410,6 +410,37 @@ Rules: if both transpose and repeat come before a pattern, the transpose must co
 last entry before RST must be a pattern number. Transpose is only reset when the song starts,
 not when it loops.
 
+### What the orderlist entries do
+
+Every voice has its own orderlist. A voice plays its list from the top: each pattern number
+plays that pattern from its first row to its last, then the voice moves on to the next entry.
+Voices do not wait for each other, so each voice can use patterns of a different length.
+
+|  05      Play pattern 05 once.
+|  R3      Repeat. The pattern that follows plays 3 times in a row (R0 plays it 16 times).
+|          Insert with SHIFT+R, then type the number of repeats.
+|  +2 / -3 Transpose. Every pattern after this entry sounds 2 half steps higher (or 3 lower).
+|          It stays in effect until another transpose entry, and is only reset when the song starts.
+|  RST 02  The end of the list. The voice jumps back to position 02 and continues from there,
+|          over and over. RST 00 loops the whole list. A higher number loops only the end.
+
+While the orderlist editor is active, the line under the list describes the entry under the cursor
+(for example "R3: the next pattern plays 3 times").
+
+There is no jump command inside a pattern. The orderlist is where a voice jumps and repeats.
+
+Example: a drum pattern of 64 rows on voice 1 should play from the start, but the bass on voice 2
+should come in after four bars.
+
+|  Voice 1:  00  RST 00      The beat (00) plays for ever.
+|  Voice 2:  0F  10  RST 01  0F is an empty pattern as long as four bars, 10 holds the bass.
+
+The bass starts on row 1 of its own pattern, so it needs no empty rows in front of it. After the
+last row of 10 the voice goes to position 01 (pattern 10), not back to the empty 0F, so the
+intro plays only the first time. Use RST 00 on voice 2 if the intro should be replayed each time
+the song loops. Keep the total number of rows on each voice the same (here 64 + 64 on voice 2,
+and 64 on voice 1 repeated) so the voices stay in step when they loop.
+
 ## Instrument editor (F7)
 
 |  0-9, A-F     Enter parameters
