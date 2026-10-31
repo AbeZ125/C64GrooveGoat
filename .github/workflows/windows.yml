@@ -34,6 +34,9 @@ jobs:
       - name: Build
         run: |
           T="$RUNNER_TEMP/tools"
+          # A fresh checkout gives every file the time of the checkout, so make would regenerate src/gres.c with
+          # tools/mkres.py (which needs Pillow). The committed resources are used instead.
+          touch src/gres.c src/gres.h
           make TARGET=win -j"$(nproc)" \
             MINGW="$T/llvm-mingw-20261020-ucrt-ubuntu-22.04-x86_64" \
             SDLMINGW="$T/SDL2-2.32.10/x86_64-w64-mingw32"
