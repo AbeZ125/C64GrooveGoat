@@ -19,7 +19,7 @@ SRCDIR = src
 CSRC = goattrk2.c gsong.c gorder.c gpattern.c ginstr.c gtable.c gplay.c gdisplay.c \
        gfile.c greloc.c ghelp.c gsound.c gconsole.c gundo.c gplatform.c gaudio.c \
        gfileio.c gdialog.c gres.c gsonglen.c gautotest.c gexport.c gvideo.c gadsr.c ginslib.c grandins.c gbackup.c gpiano.c \
-       gsummary.c gwsummary.c gfsummary.c gcmdsummary.c gsumui.c gstepedit.c gstepui.c gspeedui.c
+       gsummary.c gwsummary.c gfsummary.c gcmdsummary.c gsumui.c gstepedit.c gstepui.c gspeedui.c gmidiparse.c gmidi.c
 CXXSRC = gsid.cpp
 RESIDSRC = resid/envelope.cpp resid/extfilt.cpp resid/filter.cpp resid/pot.cpp resid/sid.cpp \
        resid/wave.cpp resid/wave6581__ST.cpp resid/wave6581_P_T.cpp resid/wave6581_PS_.cpp \
@@ -99,9 +99,9 @@ ifeq ($(TARGET),macnative)
 CC = clang
 CXX = clang++
 SDLPREFIX ?= $(shell brew --prefix sdl2 2>/dev/null || echo /opt/homebrew)
-COMMONFLAGS += -I$(SDLPREFIX)/include/SDL2 -D_REENTRANT -D__MACOSX__ -Dvtbl2q_u8=vqtbl2_u8
+COMMONFLAGS += -I$(SDLPREFIX)/include/SDL2 -D_REENTRANT -D__MACOSX__ -DGG_COREMIDI -Dvtbl2q_u8=vqtbl2_u8
 LDFLAGS = -L$(SDLPREFIX)/lib -Wl,-rpath,$(SDLPREFIX)/lib
-LIBS = -lSDL2 -lm
+LIBS = -lSDL2 -lm -framework CoreMIDI -framework CoreFoundation
 EXE = $(BUILDDIR)/groovegoat
 endif
 

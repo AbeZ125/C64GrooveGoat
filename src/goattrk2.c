@@ -26,6 +26,7 @@
 #endif
 
 #include "goattrk2.h"
+#include "gmidi.h"
 #include "gexport.h"
 #include "ginslib.h"
 #include "grandins.h"
@@ -42,6 +43,8 @@ int defaultpatternlength = 64;
 int cursorflash = 0;
 int cursorcolortable[] = { 1,2,7,2 };
 int exitprogram = 0;
+int midinewnote = -1;               // a note from the MIDI keyboard for the pattern editor to enter (see midipump)
+static int midiplaying = -1;        // the MIDI note that is sounding
 int eamode = 0;
 
 unsigned keypreset = KEY_TRACKER;
@@ -544,6 +547,8 @@ int main(int argc, char **argv)
 
   // Start editor mainloop
   printmainscreen();
+  if (!getenv("GG_NOMIDI")) midi_init();
+  if (midi_names()[0]) { snprintf(statusmessage, sizeof statusmessage, "MIDI input: %.200s", midi_names()); printmainscreen(); }
   backup_init();
   if ((showwelcome) && (!getenv("GG_SCRIPT"))) showwelcomewindow();
   while (!exitprogram)
@@ -555,6 +560,7 @@ int main(int argc, char **argv)
     backup_tick();
   }
   backup_shutdown();
+  midi_shutdown();
 
   // Shutdown sound output now
   if (getenv("GG_AUDIODEBUG")) fprintf(stderr, "audio underruns: %u\n", snd_getunderruns());
@@ -953,6 +959,61 @@ void waitkey(void)
   converthex();
 }
 
+// Handles the events from the MIDI keyboard. Returns 1 if the editor has something to do (a note to enter).
+// Notes are entered like the computer keyboard enters them (the note column of the pattern editor, or the
+// chosen instrument played as a test note anywhere else); note off releases the test note.
+void editor_noteon(int n, int record)
+{
+  if ((record) && (editorInfo.editmode == EDIT_PATTERN) && (!editorInfo.epcolumn)) midinewnote = n;
+  else playtestnote(n, editorInfo.einum, editorInfo.epchn);
+}
+
+void editor_noteoff(void)
+{
+  if (songinit == PLAY_STOPPED) releasenote(editorInfo.epchn);
+}
+
+int editor_heldnote(void)
+{
+  return midiplaying >= 0 ? midi_tracker_note(midiplaying, FIRSTNOTE, LASTNOTE) : -1;
+}
+
+static int midipump(void)
+{
+  GGMIDIEVENT e;
+  int work = 0;
+  if (midi_changed())
+  {
+    if (midi_names()[0]) snprintf(statusmessage, sizeof statusmessage, "MIDI input: %.200s", midi_names());
+    else snprintf(statusmessage, sizeof statusmessage, "MIDI input: no device");
+    work = 1;
+  }
+  while (midi_poll(&e))
+  {
+    if (e.type == MIDI_NOTEON)
+    {
+      int n = midi_tracker_note(e.a, FIRSTNOTE, LASTNOTE);
+      if (n < 0) continue;
+      midiplaying = e.a;
+      editor_noteon(n, 1);
+      if (midinewnote >= 0) work = 1;
+    }
+    else if (e.type == MIDI_NOTEOFF)
+    {
+      if (e.a == midiplaying) { editor_noteoff(); midiplaying = -1; }
+    }
+    else if (e.type == MIDI_PROGRAM)
+    {
+      int ins = e.a + 1;
+      if (ins >= MAX_INSTR) ins = MAX_INSTR - 1;
+      editorInfo.einum = ins;
+      snprintf(statusmessage, sizeof statusmessage, "MIDI program change: instrument %02X", ins);
+      work = 1;
+    }
+  }
+  return work;
+}
+
 void waitkeymouse(void)
 {
   for (;;)
@@ -965,6 +1026,7 @@ void waitkeymouse(void)
     if ((prevmouseb) && (!mouseb)) break;   // button released (piano keys)
     if (mousewheel) break;
     if (win_dropfile[0]) break;
+    if (midipump()) break;
   }
 
   converthex();

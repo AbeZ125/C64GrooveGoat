@@ -13,3 +13,5 @@ cc -O2 -Wall -o build/stepedit_test tests/stepedit_test.c src/gstepedit.c src/gw
 build/stepedit_test
 cc -O2 -Wall -o build/fsummary_test tests/fsummary_test.c src/gfsummary.c src/gsummary.c -lm
 build/fsummary_test
+cc -O2 -Wall -fsanitize=address,undefined -o build/midiparse_test tests/midiparse_test.c src/gmidiparse.c
+build/midiparse_test

@@ -828,6 +828,23 @@ presets, and SWEEP UP / SWEEP DOWN to spread the cutoff over all ticks. The pict
 for the chosen tick. Everything else works like the wave and pulse step editor. A filter program that changes the
 passband or the voices part-way is edited in the table.
 
+### MIDI input
+
+A MIDI keyboard or controller can play the editor (macOS build). The program connects to every MIDI source it
+finds when it starts, and notices devices that are plugged in or removed while it runs (the status line names
+them). There is nothing to set up.
+
+|  Key down       In the note column of the pattern editor: the note is entered at the cursor like a key of the
+|                 computer keyboard (with the chosen instrument, the cursor moves on, RECORD off enters nothing)
+|                 and played. Everywhere else (instrument, tables, other columns): played as a test note with
+|                 the chosen instrument
+|  Key up         Releases the test note (not while a song plays)
+|  Program change Chooses instrument 01-3F: program 0 is instrument 01
+
+MIDI note 12 (C0) is the lowest tracker note C-0, and middle C (note 60) is C-4. The octave setting of the
+computer keyboard does not apply. Notes outside the tracker range are ignored. Velocity, pitch bend and
+controllers are not used yet. Set GG_NOMIDI=1 in the environment to start without MIDI.
+
 ### Screen fonts
 
 The Aa button in the header of the pattern panel (next to "N SIDs, N channels") switches the screen font: Fira Code

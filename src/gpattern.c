@@ -106,6 +106,7 @@ void patterncommands(void)
       }
     }
 
+    if (midinewnote >= 0) { newnote = midinewnote; midinewnote = -1; }
     if (newnote > LASTNOTE) newnote = -1;
     if ((rawkey == 0x08) && (!editorInfo.epcolumn)) newnote = REST;
     if ((rawkey == KEY_CAPSLOCK) && (!editorInfo.epcolumn)) newnote = KEYOFF;
