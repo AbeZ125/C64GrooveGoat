@@ -35,6 +35,7 @@
 #include "glayout.h"
 #include "gdialog.h"
 #include "gadsr.h"
+#include "gsumui.h"
 #include "gbackup.h"
 
 #define EDIT_PATTERN 0

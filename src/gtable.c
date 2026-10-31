@@ -207,6 +207,16 @@ void tablecommands(void)
     if (shiftpressed) optimizetable(editorInfo.etnum);
     break;
 
+    case KEY_I:
+    if (shiftpressed) showtablesummary();
+    break;
+
+    case KEY_H:
+    if (shiftpressed) togglecommandpanel();
+    break;
+
+    break;
+
     case KEY_U:
     if (shiftpressed)
     {

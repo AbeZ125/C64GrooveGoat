@@ -361,6 +361,7 @@ mouse button on a transpose, mark or pattern button repeats it.
 |  SHIFT+J / K  Join pattern with the next one in the orderlist / split pattern at the cursor
 |  SHIFT+H      Calculate a "hifi" speedtable entry for portamento or vibrato
 |  SHIFT+I      Invert selection or the whole pattern
+|  SHIFT+G      Show / hide the pattern command guide (see "Pattern commands")
 |  SHIFT+CURSOR Mark pattern data (up/down), select pattern (left/right)
 |  SHIFT+L      Mark / unmark the whole pattern
 |  SHIFT+M / N  Choose the row highlighting step
@@ -619,6 +620,8 @@ are full, a message tells you to delete unused table data first (SHIFT+O in the 
 |  RETURN       Go back to the instrument parameter
 |  SHIFT+Q / A  Transpose a speedtable portamento speed half step up / down
 |  SHIFT+W / S  Transpose octave up / down, or multiply / divide pulse and filter speeds by 2
+|  SHIFT+I      Summary of the pulse, wave or filter table program (see below)
+|  SHIFT+H      Show / hide the side list of the codes of the table under the cursor
 |  SHIFT+L      Convert a limit based modulation step to a time based step
 |  SHIFT+N      Negate a speed (pulse/filter) or relative note (wave)
 |  SHIFT+O      Optimize the table (remove unused rows)
@@ -674,6 +677,16 @@ MP3 tags and shown in exported videos.
 |  FXY  Set tempo. $03-$7F sets the tempo of all voices, $83-$FF only of the current voice.
 |       $00-$01 recall the funktempo values.
 
+### Pattern command guide
+
+While the cursor is on the command or data column of the pattern editor, a guide lists the commands 0-F
+(the one under the cursor is highlighted) and explains the command and its data byte in plain words,
+for example "vibrato: 5.0 Hz, depth about 20 cents at A-4", with the speedtable row it uses, the
+frequency of a portamento in semitones per second, the attack and decay times of 5XY, or the tempo in
+frames, milliseconds and BPM. Commands that start a table program (8XY, 9XY) also describe that program.
+The same sentence is shown on the line under the tables. The guide appears on the side of the screen
+that the cursor is not on. SHIFT+G hides and shows it.
+
 The master volume is $F by default and is only reset when a song is loaded or cleared, not when
 playback starts. If you change it, reset it at the beginning of your song.
 
@@ -719,6 +732,46 @@ Examples:
 
 The pattern commands 0XY, 8XY and EXY can not be executed from the wavetable.
 
+### Playing row highlight
+
+While a song or a test note plays, the row of each table that the voice is on is highlighted in the table
+panel: the wave and pulse rows being executed (a row stays lit while it waits or modulates), the filter row
+of the voice's SID, and the speedtable row used by the voice's portamento or vibrato (also the instrument's
+own vibrato). The voice is the one being edited if it plays the current instrument, otherwise another voice
+playing it. In the pulse and wave summary windows the playing row is marked with a blue *.
+
+### Filtertable summary and editor
+
+The line under the tables and SHIFT+I in the filtertable describe the filter program in words: the passband
+(low-pass, band-pass, high-pass, or a combination such as notch), the resonance, the voices that are sent
+through the filter, how the cutoff moves, and how long one repetition takes. The window shows every row in plain
+language, a graph of the cutoff over time (with a marker on the playing position) and the shape of the filter
+(level over frequency) at four moments of the program. The cutoff frequencies are given for an 8580; a 6581 differs
+from chip to chip. A set row ($80-$F0) directly followed by a cutoff row ($00) happens in the same tick, as the
+manual says above. An empty row $00 $00 is not a stop: it sets the cutoff to 0.
+
+### Table codes list
+
+While a table is edited, a list of the codes of that table is shown to the left of the table panel: what
+every value of the left and the right side does, and for the wavetable the pattern commands F1-FD. The
+entry that matches the value under the cursor is highlighted. SHIFT+H hides and shows the list.
+
+### Wavetable summary
+
+Next to the ADSR graph a small picture shows the waveform: triangle, sawtooth, pulse or noise, with
+a label such as PUL or TRI+SAW (and RING, SYNC or TEST when those bits are set). When several shapes
+are combined, the thin lines are the shapes by themselves and the thick line is roughly what the SID
+makes of the combination. While the cursor is in the wavetable the picture follows the cursor row; on a
+row that does not set a waveform (a delay, a note-only row, a jump) the waveform in effect is shown dimmed.
+Otherwise it shows the first waveform that the current instrument's wavetable program sets.
+
+Under the tables one line describes the program at the cursor, for example "pulse, then tri; ends after 2t".
+SHIFT+I in the wavetable opens a window with every row in plain language ("wait 3 frames, then note +7",
+"pulse, note C#0", "loop back to 02"), a graph with the note over time and below it the waveform of each
+step, the waveforms used, the notes (an arpeggio is listed as "arpeggio 0 +4 +7 +12"), and how long one
+repetition takes. The replay follows the playroutine, including the delay rule: a delay of N holds the
+previous waveform for N+1 frames. Vibrato, portamento and the other commands are listed but not drawn.
+
 ## Pulsetable
 
 |  Left side   01-7F  Modulation step: left = time in ticks, right = signed speed
@@ -730,6 +783,37 @@ The pattern commands 0XY, 8XY and EXY can not be executed from the wavetable.
 |  03: 40 E0    64 ticks down with speed -$20
 |  04: 40 20    64 ticks up with speed $20
 |  05: FF 03    Loop back to row 03
+
+### Pulsetable summary
+
+Under the tables, one line says in plain words what the pulsetable program at the cursor does, for
+example "PULSE 01: 0.4% to 50.4% sweep, 2.6 s loop". While the cursor is in the pulsetable it is the
+program the cursor is in (it starts on the row after the last FF row above the cursor); otherwise it
+is the program the current instrument starts (its Pulsetable Pos).
+
+SHIFT+I in the table editor opens the summary window:
+
+|  Rows      Every row of the program in plain language, for example "narrow 64t, -$20/t = -50%"
+|            (t = tick = one frame). The row of the cursor is marked with >
+|  Graph     The pulse width over time, 0% at the bottom and 100% at the top. A program that
+|            repeats is shown for two repetitions, with dotted lines around the part that repeats
+|  Width     The narrowest and the widest the pulse gets, in percent of the period ($800 = 50%)
+|  Shape     For example "sweeps up and down", "sweeps up, jumps back (sawtooth)", "keeps widening
+|            and wraps round", "sets the width to 50% and holds it"
+|  Time      How many ticks (and seconds, and Hz) one repetition takes, or when the program ends
+|  Remark    For example an empty row that stops the table, a jump to a jump row (the playroutine
+|            takes it as "set width"), or a width of 0% or 100% where the voice is silent
+
+The Wave line shows the output of the voice at six moments of the program, left to right, with the pulse
+width of each moment: this is the shape the pulse modulation forms (when the instrument's waveform combines
+the pulse with other shapes, that combination is drawn). While the cursor is in the pulsetable, the small
+picture next to the ADSR graph shows the wave with the width that the row under the cursor leaves
+(for a modulation row "12%>40%" means from 12% to 40%).
+
+The summary replays the program tick by tick exactly like the playroutine does. When the program does
+not start by setting the width itself, the width the voice has when the instrument starts is not
+known: the replay starts from $800 (50%) and the window says so. The ticks that the playroutine skips
+with the PO setting are not taken into account.
 
 ## Filtertable
 

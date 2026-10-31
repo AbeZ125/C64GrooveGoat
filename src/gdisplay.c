@@ -667,7 +667,8 @@ static void drawinstrument(void)
     adsr_timestr(t, adsr_decayms(sr & 15));
     sprintf(buf, "S%X R%7s", sr >> 4, t);
     printtext(tx, ADSR_Y + 2, MKCOL(7, C_PANEL), buf);
-    ui_addbutton(RP_X, ADSR_Y, RP_W, BTN_ADSRGRAPH, 0);
+    ui_addbutton(RP_X, ADSR_Y, ADSR_W + 12, BTN_ADSRGRAPH, 0);
+    drawwaveicon(RP_X + ADSR_W + 12, ADSR_Y);
   }
 
   if ((editorInfo.editmode == EDIT_INSTRUMENT) && (!eamode))
@@ -693,11 +694,13 @@ static void drawtables(void)
 
   for (c = 0; c < MAX_TABLES; c++)
   {
+    int playrow = sum_playrow(c);      // the row the playing voice is on
     for (d = 0; d < VISIBLETABLEROWS; d++)
     {
       int p = editorInfo.etview[c]+d;
       int color = 8;
       int bg = (p & 1) ? C_PANEL : C_BEATROW;
+      int playing = (playrow == p + 1);
 
       if (p >= MAX_TABLELEN) continue;
       switch (c)
@@ -717,8 +720,14 @@ static void drawtables(void)
       if (ltable[c][p] == 0xff) color = 13;
       if ((!ltable[c][p]) && (!rtable[c][p])) color = 3;
       if ((p == editorInfo.etpos) && (editorInfo.etnum == c)) color = CEDIT;
+      if (playing)
+      {
+        bg = C_BUTTONHI;
+        if (color != CEDIT) color = 15;
+        printtext(TBL_X(c) + 2, TBL_ROWS_Y + d, MKCOL(3, bg), " ");
+      }
       sprintf(buf, "%02X", p+1);
-      printtext(TBL_X(c), TBL_ROWS_Y + d, MKCOL(3, bg), buf);
+      printtext(TBL_X(c), TBL_ROWS_Y + d, MKCOL(playing ? 15 : 3, bg), buf);
       sprintf(buf, "%02X %02X", ltable[c][p], rtable[c][p]);
       printtext(TBL_X(c) + 3, TBL_ROWS_Y + d, MKCOL(color, bg), buf);
 
@@ -1054,8 +1063,9 @@ void printstatus(void)
   drawinstrument();
   printblankc(RP_X, ADSR_Y + 3, MKCOL(8, 0), RP_W);
   drawtables();
-  printblankc(RP_X, TBL_ROWS_Y + VISIBLETABLEROWS, MKCOL(8, 0), RP_W);
+  drawtablesummaryline(TBL_ROWS_Y + VISIBLETABLEROWS);
   drawnames();
+  drawcommandpanel();
   if (showpiano) drawpiano();
   drawstatusarea();
 }

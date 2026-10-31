@@ -39,7 +39,7 @@
 #define INS_VAL_OFS 16                // offset of the hex value inside a column
 
 #define ADSR_Y 16                     // ADSR graph (3 rows) below the instrument
-#define ADSR_W 31                     // graph width in cells
+#define ADSR_W 20                     // graph width in cells
 
 #define TBL_Y 20                      // table header
 #define TBL_ROWS_Y 21

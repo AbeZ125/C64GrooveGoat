@@ -651,6 +651,10 @@ void patterncommands(void)
     }
     break;
 
+    case KEY_G:
+    if (shiftpressed) togglecommandpanel();
+    break;
+
     case KEY_N:
     if (shiftpressed)
     {
