@@ -3,6 +3,7 @@
 #   make TARGET=linux     native Linux build (needs SDL2 headers + libSDL2)
 #   make TARGET=appimage  Linux build for the AppImage (static SDL2, see tools/package.sh)
 #   make TARGET=win       Windows x64 cross build (llvm-mingw + SDL2 mingw devel)
+#   make TARGET=macnative native macOS build with Homebrew SDL2
 #   make TARGET=mac       macOS Apple Silicon cross build (clang + lld + SDK + SDL2.framework)
 #   make TARGET=macintel  macOS Intel (x86_64) cross build, macOS 10.13 or newer
 #
@@ -92,6 +93,17 @@ LIBS = -framework SDL2 -lSystem
 EXE = $(BUILDDIR)/groovegoat
 endif
 
+# Native macOS build on the Mac itself (SDL2 from Homebrew)
+ifeq ($(TARGET),macnative)
+CC = clang
+CXX = clang++
+SDLPREFIX ?= $(shell brew --prefix sdl2 2>/dev/null || echo /opt/homebrew)
+COMMONFLAGS += -I$(SDLPREFIX)/include/SDL2 -D_REENTRANT -D__MACOSX__ -Dvtbl2q_u8=vqtbl2_u8
+LDFLAGS = -L$(SDLPREFIX)/lib -Wl,-rpath,$(SDLPREFIX)/lib
+LIBS = -lSDL2 -lm
+EXE = $(BUILDDIR)/groovegoat
+endif
+
 # Audio/video codecs: LAME (MP3, LGPL), faac (AAC, LGPL)
 LAMESRC = $(notdir $(wildcard $(SRCDIR)/codecs/lame/*.c))
 FAACSRC = $(notdir $(wildcard $(SRCDIR)/codecs/faac/*.c))
@@ -139,6 +151,7 @@ $(BUILDDIR)/macstub.o: $(SRCDIR)/macstub/cxxrt.c
 else
 $(EXE): $(OBJS) $(WINRES)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
+	@if [ "$(TARGET)" = macnative ]; then ln -sfn ../../instruments $(BUILDDIR)/instruments; ln -sfn ../../examples $(BUILDDIR)/examples; fi
 endif
 
 clean:
