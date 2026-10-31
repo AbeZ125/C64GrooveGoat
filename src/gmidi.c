@@ -49,7 +49,7 @@ int midi_poll_queue(GGMIDIEVENT *ev)
     *ev = queue[t % QUEUE];
     age = nowms() - qtime[t % QUEUE];
     __atomic_store_n(&qtail, t + 1, __ATOMIC_RELEASE);
-    if (age < 400) return 1;            // events that waited longer (a dialog was open) are dropped, not played late
+    if ((age < 400) || (ev->type == MIDI_NOTEOFF)) return 1;   // notes that waited longer (a dialog was open) are dropped, not played late; a key up is always passed on so no key stays held
   }
 }
 

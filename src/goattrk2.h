@@ -58,7 +58,9 @@
 extern int showkeyboard;
 void editor_noteon(int trackernote, int record);   // a note from the MIDI keyboard or the on-screen piano
 void editor_noteoff(void);
-int editor_heldnote(void);                         // the tracker note held on the MIDI keyboard, or -1
+void editor_keyon(int id, int trackernote, int record);   // a key goes down / up; id tells the keys apart (MIDI note, -1 = mouse)
+void editor_keyoff(int id);
+int editor_heldnotes(int *out, int max);           // the tracker notes held on the MIDI keyboard, returns how many
 void drawkeyboard(void);
 int keyboardmouse(void);
 int keyboard_busy(void);                           // a piano key is held with the mouse

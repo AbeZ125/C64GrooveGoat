@@ -17,5 +17,7 @@ cc -O2 -Wall -fsanitize=address,undefined -o build/midiparse_test tests/midipars
 build/midiparse_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/keylayout_test tests/keylayout_test.c src/gkeylayout.c
 build/keylayout_test
+cc -O2 -Wall -fsanitize=address,undefined -o build/voices_test tests/voices_test.c src/gvoices.c
+build/voices_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/ordhint_test tests/ordhint_test.c src/gordhint.c
 build/ordhint_test

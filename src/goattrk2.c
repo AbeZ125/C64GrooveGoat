@@ -27,6 +27,7 @@
 
 #include "goattrk2.h"
 #include "gmidi.h"
+#include "gvoices.h"
 #include "gexport.h"
 #include "ginslib.h"
 #include "grandins.h"
@@ -44,7 +45,7 @@ int cursorflash = 0;
 int cursorcolortable[] = { 1,2,7,2 };
 int exitprogram = 0;
 int midinewnote = -1;               // a note from the MIDI keyboard for the pattern editor to enter (see midipump)
-static int midiplaying = -1;        // the MIDI note that is sounding
+static VOICES heldkeys;             // the keys held on the MIDI keyboard (by MIDI note) and with the mouse on the piano (-1)
 int eamode = 0;
 
 unsigned keypreset = KEY_TRACKER;
@@ -909,6 +910,17 @@ static void runautotest(void)
   if (th) settheme(atoi(th));
   if (getenv("GG_PLAY")) initsong(0, PLAY_BEGINNING);
   if (getenv("GG_KEYBOARD")) showkeyboard = 1;
+  if (getenv("GG_CHORD"))             // MIDI keys held down, for example GG_CHORD=60,64,67 (MIDI note numbers)
+  {
+    const char *l = getenv("GG_CHORD");
+    while (*l)
+    {
+      int m = atoi(l), n = midi_tracker_note(m, FIRSTNOTE, LASTNOTE);
+      if (n >= 0) editor_keyon(m, n, 1);
+      while ((*l) && (*l != ',')) l++;
+      if (*l == ',') l++;
+    }
+  }
   if (getenv("GG_ORDERPOS"))
   {
     editorInfo.editmode = EDIT_ORDERLIST;
@@ -943,6 +955,11 @@ static void runautotest(void)
     fliptoscreen();
     getkey();
   }
+  if (getenv("GG_CHORD"))
+  {
+    int c;
+    for (c = 0; c < numchannels; c++) fprintf(stderr, "channel %d: gate %02X, note %d, new note %02X\n", c + 1, chn[c].gate, chn[c].note, chn[c].newnote);
+  }
   snprintf(name, MAX_PATHNAME, "%s", shot);
   savescreenshot(name);
   if (getenv("GG_HELPSHOT"))
@@ -973,20 +990,38 @@ void waitkey(void)
 // Handles the events from the MIDI keyboard. Returns 1 if the editor has something to do (a note to enter).
 // Notes are entered like the computer keyboard enters them (the note column of the pattern editor, or the
 // chosen instrument played as a test note anywhere else); note off releases the test note.
-void editor_noteon(int n, int record)
+// Every key that is held sounds on a channel of its own, the first one on the channel of the cursor, so a chord can be
+// heard. Only the first key of a chord is entered in the pattern. While a song plays all keys use the channel of the
+// cursor, so the song's other voices are left alone.
+void editor_keyon(int id, int n, int record)
 {
-  if ((record) && (editorInfo.editmode == EDIT_PATTERN) && (!editorInfo.epcolumn)) midinewnote = n;
-  else playtestnote(n, editorInfo.einum, editorInfo.epchn);
+  int first = voices_count(&heldkeys) == 0;
+  int ch = voices_on(&heldkeys, id, editorInfo.epchn, numchannels, songinit == PLAY_STOPPED ? numchannels : 1);
+  if ((record) && (first) && (editorInfo.editmode == EDIT_PATTERN) && (!editorInfo.epcolumn)) midinewnote = n;   // the pattern editor enters and plays it
+  else playtestnote(n, editorInfo.einum, ch);
 }
 
-void editor_noteoff(void)
+void editor_keyoff(int id)
 {
-  if (songinit == PLAY_STOPPED) releasenote(editorInfo.epchn);
+  int ch = voices_off(&heldkeys, id);
+  if ((ch >= 0) && (songinit == PLAY_STOPPED)) releasenote(ch);
 }
 
-int editor_heldnote(void)
+void editor_noteon(int n, int record) { editor_keyon(-1, n, record); }
+void editor_noteoff(void) { editor_keyoff(-1); }
+
+// The tracker notes of the keys held on the MIDI keyboard (for the on-screen piano). Returns how many.
+int editor_heldnotes(int *out, int max)
 {
-  return midiplaying >= 0 ? midi_tracker_note(midiplaying, FIRSTNOTE, LASTNOTE) : -1;
+  int i, count = 0;
+  for (i = 0; (i < voices_count(&heldkeys)) && (count < max); i++)
+  {
+    int k = voices_key(&heldkeys, i), n;
+    if (k < 0) continue;
+    n = midi_tracker_note(k, FIRSTNOTE, LASTNOTE);
+    if (n >= 0) out[count++] = n;
+  }
+  return count;
 }
 
 static int midipump(void)
@@ -1005,13 +1040,12 @@ static int midipump(void)
     {
       int n = midi_tracker_note(e.a, FIRSTNOTE, LASTNOTE);
       if (n < 0) continue;
-      midiplaying = e.a;
-      editor_noteon(n, 1);
+      editor_keyon(e.a, n, 1);
       if (midinewnote >= 0) work = 1;
     }
     else if (e.type == MIDI_NOTEOFF)
     {
-      if (e.a == midiplaying) { editor_noteoff(); midiplaying = -1; }
+      editor_keyoff(e.a);
     }
     else if (e.type == MIDI_PROGRAM)
     {

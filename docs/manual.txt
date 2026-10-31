@@ -892,6 +892,12 @@ them). There is nothing to set up.
 |  Key up         Releases the test note (not while a song plays)
 |  Program change Chooses instrument 01-3F: program 0 is instrument 01
 
+Several keys held at once all sound, each on a channel of its own: the first key on the channel of the cursor, the next ones
+on the channels after it (a chord needs as many channels as keys; with one SID that is three, a fourth key takes over
+the channel of the oldest key). Only the first key of a chord is entered in the pattern. While a song plays, every key
+uses the channel of the cursor, so the voices of the song are left alone. The keys held show orange on the on-screen
+piano.
+
 MIDI note 12 (C0) is the lowest tracker note C-0, and middle C (note 60) is C-4. The octave setting of the
 computer keyboard does not apply. Notes outside the tracker range are ignored. Velocity, pitch bend and
 controllers are not used yet. Set GG_NOMIDI=1 in the environment to start without MIDI.

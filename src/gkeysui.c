@@ -7,6 +7,7 @@
 
 #include "goattrk2.h"
 #include "gkeylayout.h"
+#include "gvoices.h"
 
 #define KB_ROWS (1 + KEYLAY_ROWS)
 #define KB_Y (PATT_ROWS_Y + VISIBLEPATTROWS - KB_ROWS)       // the header row
@@ -23,7 +24,7 @@ static int keyofnote(int note)          // tracker note value (0 = C-0) to a key
 
 void drawkeyboard(void)
 {
-  int state[KEYLAY_KEYS], below = 0, above = 0, c, k, w, held;
+  int state[KEYLAY_KEYS], below = 0, above = 0, c, k, w, held[VOICES_MAX], nheld;
   char buf[80];
   int x;
 
@@ -37,8 +38,9 @@ void drawkeyboard(void)
     else if (keyofnote(n) >= 0) state[keyofnote(n)] = 1;
     else above = 1;
   }
-  held = editor_heldnote();
-  if ((held >= 0) && (keyofnote(held - FIRSTNOTE) >= 0)) state[keyofnote(held - FIRSTNOTE)] = 2;
+  nheld = editor_heldnotes(held, VOICES_MAX);
+  for (k = 0; k < nheld; k++)
+    if (keyofnote(held[k] - FIRSTNOTE) >= 0) state[keyofnote(held[k] - FIRSTNOTE)] = 2;
   if (mousekey >= 0) state[mousekey] = 2;
 
   // header
