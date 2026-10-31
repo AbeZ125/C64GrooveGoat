@@ -77,6 +77,7 @@ unsigned mastervolume = 80;
 unsigned showwelcome = 1;
 unsigned kbdlayoutsetting = 2;
 unsigned showpiano = 1;        // piano keyboard above the status bar
+unsigned fontsetting = 0;            // the screen font, an index into res_fontnames
 float basepitch = 0.0f;
 float equaldivisionsperoctave = 12.0f;
 int tuningcount = 0;
@@ -498,11 +499,13 @@ int main(int argc, char **argv)
 
   // Set screenmode
   theme = themesetting;
+  if (fontsetting >= RES_NUMFONTS) fontsetting = 0;
   if (!initscreen())
   {
     fprintf(stderr, "Could not open the program window.\n");
     return EXIT_FAILURE;
   }
+  setfont(fontsetting);
 
   // Keyboard layout: detect from the system keymap on the first start
   if (kbdlayoutsetting > 1)
@@ -695,6 +698,7 @@ static void loadconfig(void)
   getparam(configfile, &kbdlayoutsetting);
   getparam(configfile, &showpiano);
   getparam(configfile, &prgpiano);
+  getparam(configfile, &fontsetting);
   fclose(configfile);
   showpiano &= 1;
   prgpiano &= 1;
@@ -758,7 +762,8 @@ static void saveconfig(void)
     ";Show the welcome window at startup (0 = no, 1 = yes)\n%d\n\n"
     ";Keyboard layout for shortcuts (0 = EN QWERTY, 1 = DE QWERTZ, 2 = detect)\n%d\n\n"
     ";Show the piano keyboard (0 = no, 1 = yes)\n%d\n\n"
-    ";Piano keyboard on the screen of runnable PRGs (0 = no, 1 = yes)\n%d\n\n",
+    ";Piano keyboard on the screen of runnable PRGs (0 = no, 1 = yes)\n%d\n\n"
+    ";Screen font (0 = Fira Code, 1 = MesloLGS NF)\n%d\n\n",
     b,
     mr,
     hardsid,
@@ -806,7 +811,8 @@ static void saveconfig(void)
     showwelcome,
     kbdlayout,
     showpiano,
-    prgpiano);
+    prgpiano,
+    fontsetting);
   fclose(configfile);
 }
 
@@ -1051,6 +1057,14 @@ void changenumsids(int n)
     numsids > 2 ? " - songs are saved in the C64 GrooveGoat .ggt format" : "");
 }
 
+void cyclefont(void)
+{
+  fontsetting = (getfont() + 1) % RES_NUMFONTS;
+  setfont(fontsetting);
+  snprintf(statusmessage, sizeof statusmessage, "Screen font: %s", res_fontnames[fontsetting]);
+  printmainscreen();
+}
+
 void togglethemekey(void)
 {
   settheme(theme ^ 1);
@@ -1246,6 +1260,7 @@ static void buttoncommand(int id, int param)
     case BTN_EXPORTAUDIO: exportaudio(0); break;
     case BTN_EXPORTVIDEO: exportaudio(1); break;
     case BTN_THEME: togglethemekey(); break;
+    case BTN_FONT: cyclefont(); break;
     case BTN_HELP: onlinehelp(0, 0); break;
     case BTN_MANUAL: showmanual(); break;
     case BTN_HISTORY: showhistory(); break;

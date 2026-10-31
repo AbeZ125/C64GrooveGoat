@@ -43,6 +43,8 @@ void clearscreen(void);
 void fliptoscreen(void);
 void forceredraw(void);
 void settheme(int t);
+void setfont(int f);              // the screen font: an index into res_fontnames (gres.h)
+int getfont(void);
 void printtext(int x, int y, int color, const char *text);
 void printtextc(int y, int color, const char *text);
 void printtextcp(int cp, int y, int color, const char *text);

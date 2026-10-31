@@ -124,6 +124,20 @@ static const Uint32 daypal[32] = {
   0xcfc8f5, // 31 selection
 };
 
+static int fontindex = 0;
+
+void setfont(int f)
+{
+  if ((f < 0) || (f >= RES_NUMFONTS)) f = 0;
+  fontindex = f;
+  fulldirty = 1;
+}
+
+int getfont(void)
+{
+  return fontindex;
+}
+
 void settheme(int t)
 {
   int c;
@@ -744,7 +758,7 @@ static void rendercell(int x, int y, unsigned cell)
   }
   if (glyph < 256)
   {
-    const unsigned char *a = (scale == 1 ? res_font1 : res_font2) + glyph * cw * ch;
+    const unsigned char *a = res_fontset[fontindex][scale == 1 ? 0 : 1] + glyph * cw * ch;
     for (py = 0; py < ch; py++)
     {
       for (px = 0; px < cw; px++)

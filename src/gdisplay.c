@@ -91,6 +91,12 @@ static const char *buttonhint(int id)
     case BTN_EXPORTAUDIO: return "Export audio: WAV (also single voices) or MP3 - Ctrl+F9";
     case BTN_EXPORTVIDEO: return "Export an MP4 video (720p) with an oscilloscope for every voice";
     case BTN_THEME: return "Switch between the night (C64 blue) and the day theme";
+    case BTN_FONT:
+    {
+      static char fonttip[100];
+      snprintf(fonttip, sizeof fonttip, "Screen font: %s - click for the next font", res_fontnames[getfont()]);
+      return fonttip;
+    }
     case BTN_HELP: return "Help: keys and commands - F12";
     case BTN_INFO: return "Version, author, credits and licenses";
     case BTN_UNDO: return "Undo the last change - Ctrl+Z";
@@ -325,6 +331,7 @@ static void drawpatterns(void)
   }
   sprintf(buf, "%d SID%s  %d channels", numsids, numsids > 1 ? "s" : "", numchannels);
   printtext(PATT_X + PATT_W - strlen(buf) - 1, PATT_Y, MKCOL(C_HEADERTEXT, editorInfo.editmode == EDIT_PATTERN ? C_BUTTONHI : C_HEADER), buf);
+  ui_drawbutton(PATT_X + PATT_W - (int)strlen(buf) - 7, PATT_Y, " Aa ", BTN_FONT, 0, 0);
 
   // Tool row: transpose, mark, select pattern, cut / copy / paste
   {

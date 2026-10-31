@@ -61,6 +61,10 @@ Fira Code font
   https://github.com/tonsky/FiraCode
   SIL Open Font License 1.1
 
+MesloLGS NF font (screen font)
+  Meslo LG, based on Apple's Menlo and the Bitstream Vera fonts, patched with the Nerd Fonts glyphs
+  Apache License 2.0 (see res/fonts/MesloLGS-NF-LICENSE.txt)
+
 LAME MP3 encoder 3.100 (MP3 export)
   The LAME project - https://lame.sourceforge.io
   GNU Lesser General Public License 2 (see licenses/LAME-COPYING.txt).

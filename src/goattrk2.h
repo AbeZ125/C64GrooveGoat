@@ -150,6 +150,7 @@ void readscalatuningfile(void);
 void do_sound_init(void);
 void changenumsids(int n);
 void togglethemekey(void);
+void cyclefont(void);
 void newsong(void);
 void exportsid(void);
 void exportprg(void);

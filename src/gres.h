@@ -7,6 +7,9 @@ typedef struct { const char *name; const unsigned char *data; int len; } RESFILE
 
 extern const unsigned char res_font1[];
 extern const unsigned char res_font2[];
+#define RES_NUMFONTS 2
+extern const unsigned char *const res_fontset[RES_NUMFONTS][2];
+extern const char *const res_fontnames[RES_NUMFONTS];
 extern const RESIMAGE res_images[];
 extern const RESFILE res_files[];
 const unsigned char *res_getfile(const char *name, int *len);

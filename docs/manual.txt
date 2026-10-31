@@ -828,6 +828,16 @@ presets, and SWEEP UP / SWEEP DOWN to spread the cutoff over all ticks. The pict
 for the chosen tick. Everything else works like the wave and pulse step editor. A filter program that changes the
 passband or the voices part-way is edited in the table.
 
+### Screen fonts
+
+The Aa button in the header of the pattern panel (next to "N SIDs, N channels") switches the screen font: Fira Code
+(the default) and MesloLGS NF. The choice is saved in the configuration file. The fonts are drawn into the program
+when it is built (tools/mkres.py, the list FONTS and the files in res/fonts), so another font is added by putting its
+.ttf file in res/fonts, adding a line to FONTS and building again. Check the licence of a font before you share a
+build or the source with it: Fira Code is under the SIL Open Font License and MesloLGS NF under the Apache License 2.0
+(see res/fonts). Pixel fonts with 8 pixels per character can be drawn at exactly 8 and 16 pixels and stretched
+twice vertically (the last two numbers in the FONTS line), and FONTS has a list for fonts without accented letters.
+
 ### Table codes list
 
 While a table is edited, a list of the codes of that table is shown to the left of the table panel: what
