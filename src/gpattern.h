@@ -81,6 +81,9 @@ void expandpattern(void);
 void splitpattern(void);
 void joinpattern(void);
 
-int pattern_glide(int row, int choice);
+#include "gglide.h"
+int pattern_glideinfo(int row, GLIDEINFO *g);
+int pattern_glide(int row, int ticks);
+void showglideeditor(const GLIDEINFO *g);
 
 #endif

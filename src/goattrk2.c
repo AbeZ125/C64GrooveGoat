@@ -970,19 +970,29 @@ static void runautotest(void)
     if (!strcmp(scr, "loadins")) { editorInfo.editmode = EDIT_INSTRUMENT; load(); }
     if (!strcmp(scr, "clear")) clear();
     if (!strcmp(scr, "quit")) quit();
-    if (!strcmp(scr, "glide"))          // pattern 0 of voice 1: C-4, then C-5 made a glide GG_EIPOS (1-5) = how long
+    if (!strcmp(scr, "glide") || !strcmp(scr, "glideui"))   // pattern 0 of voice 1: C-4 at row 0, C-5 at row 4
     {
-      int c;
       memset(pattern[0], 0, 16 * 4);
+      { int r; for (r = 0; r < 16; r++) pattern[0][r * 4] = REST; }       // an empty row is a rest
       pattern[0][0] = FIRSTNOTE + 48; pattern[0][1] = 1;
       pattern[0][4 * 4] = FIRSTNOTE + 60;
-      pattlen[0] = 8;
+      pattlen[0] = 16;
       editorUndoInfo.editorInfo[0].epnum = 0;
       editorInfo.epchn = 0;
       editorInfo.eppos = 4;
-      fprintf(stderr, "glide done: %d\n", pattern_glide(4, getenv("GG_EIPOS") ? atoi(getenv("GG_EIPOS")) : 3));
-      fprintf(stderr, "row 4: note %02X cmd %02X data %02X; speedtable row 1: %02X %02X\n", pattern[0][16], pattern[0][18], pattern[0][19], ltable[STBL][0], rtable[STBL][0]);
-      (void)c;
+      if (getenv("GG_BLOCK")) { pattern[0][8 * 4] = FIRSTNOTE + 50; }      // a note at row 8 ends the room
+      if (!strcmp(scr, "glide"))                // GG_EIPOS = ticks
+      {
+        int r, t = pattern_glide(4, getenv("GG_EIPOS") ? atoi(getenv("GG_EIPOS")) : 20);
+        fprintf(stderr, "ticks: %d; speedtable row 1: %02X %02X; rows:", t, ltable[STBL][0], rtable[STBL][0]);
+        for (r = 0; r < 12; r++) fprintf(stderr, " %02X/%02X", pattern[0][r * 4 + 2], pattern[0][r * 4 + 3]);
+        fprintf(stderr, "\n");
+      }
+      else
+      {
+        GLIDEINFO g;
+        if (pattern_glideinfo(4, &g)) showglideeditor(&g);
+      }
     }
     if (!strcmp(scr, "adsr")) { editorInfo.einum = 1; showadsreditor(); }
     if (!strcmp(scr, "instkey"))        // SHIFT+E in the instrument editor on the field GG_EIPOS (0-5)

@@ -407,17 +407,31 @@ automatic advance. The step size (Step) sets how many rows the cursor moves.
 
 To let a note slide into the next one instead of starting again (a portamento, or "glide"), put
 the cursor on the second note and press SHIFT+T. The window shows the two notes (the second note
-and the nearest note above it in the same pattern) and asks how long the slide takes: Instant,
-0.05, 0.1, 0.2, 0.4 or 0.8 seconds. Whatever the distance between the notes is, the slide takes
-that long (a one-octave jump and a one-semitone step both take 0.2 s if you choose 0.2 s).
+and the nearest note above it in the same pattern) and a slider for how long the slide takes, from
+instant to the longest time that fits. Drag the slider with the mouse, or use LEFT / RIGHT (one
+tick; with SHIFT one row), HOME and END, or the quick buttons (0.1, 0.2, 0.4, 0.8, 1.6 s, LONGEST).
+Whatever the distance between the notes is, the slide takes the time you choose (a one-octave jump
+and a one-semitone step both take 0.2 s if you choose 0.2 s). ENTER keeps it, ESC leaves everything
+as it was.
 
 What it writes is the pattern command 3XY (tone portamento) on the second note, with a speedtable
 entry that is made for the two notes (an entry that is already there is used again). The second note
 does not restart the sound: the first note keeps playing and its pitch moves to the new note and
 stays there. "Instant" writes 300 (a tie note): the pitch jumps to the second note at once, without
-a new attack. The status line tells which entry was made and how many ticks the slide takes.
-The speed is fixed in the table, so if you change one of the notes afterwards, press SHIFT+T
-again. With the song transposed (an orderlist +/- entry) the slide takes a little more or less.
+a new attack.
+
+A slide does not stop by itself half way. The playroutine ends a slide at the start of every row
+that has an empty command column, and a row is only a few ticks long (6 at the usual tempo, 0.12 s),
+so a longer slide needs the command on every row it lasts. The glide window does this for you: it
+writes the same 3XY on the empty rows after the note for as long as the slide takes. The slider stops
+at the room there is: the rows up to the next note or command in the pattern, or the end of the pattern
+(a new pattern starts with an empty command, which would cut the slide off). The window shows that room
+and the tempo it counted with (the last tempo command in the pattern, or 6 ticks per row if there is
+none; if the tempo is set somewhere else, for example in an earlier pattern, check it).
+
+Pressing SHIFT+T again on the same note changes the glide: the rows of the old one are cleared first.
+The speed is fixed in the table, so if you change one of the notes afterwards, press SHIFT+T again.
+With the song transposed (an orderlist +/- entry) the slide takes a little more or less.
 
 ## Orderlist editor (F6)
 
