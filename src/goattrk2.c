@@ -505,6 +505,7 @@ int main(int argc, char **argv)
 
   // The test runs (screenshots) never take the whole screen, whatever the saved window type is
   if (getenv("GG_AUTOTEST")) win_fullscreen = 0;
+  if (getenv("GG_SCOPE")) showscope = atoi(getenv("GG_SCOPE")) ? 1 : 0;      // tests: oscilloscopes on / off whatever the config says
 
   // Set screenmode
   theme = themesetting;

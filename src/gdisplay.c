@@ -318,19 +318,33 @@ static int chnlevel(int c)
 
 static void drawscope(int slot, int ch, int x, int bg)
 {
+  // The picture is made again about 25 times a second, and when the voice, its mute or the size changed; in
+  // between, the canvas keeps its picture, and canvas_draw sees that nothing changed and costs no screen update.
+  static unsigned lastcount[VISIBLECHANNELS];
+  static int lastch[VISIBLECHANNELS], lastmute[VISIBLECHANNELS], lasth[VISIBLECHANNELS];
   int cw = CHN_W - 1, w = cw * 16, h = SCOPE_H * 32, c, y;
-  int lo[CANVAS_MAXCW * 16], hi[CANVAS_MAXCW * 16];
-  unsigned char *cv = canvas_begin(5 + slot, cw, SCOPE_H);
-  if (!cv) return;
-  for (c = 0; c < w; c += 4) cv[((h - 1) / 2) * CANVAS_STRIDE + c] = 70;           // the middle line
-  if ((!chn[ch].mute) && (scope_render(ch, SCOPE_SPAN, w, h, SCOPE_FULL, lo, hi)))
+  unsigned count = scope_count(ch);
+  if ((slot < 0) || (slot >= VISIBLECHANNELS)) return;
+  if ((lastch[slot] != ch + 1) || (lastmute[slot] != chn[ch].mute + 1) || (lasth[slot] != h) ||
+      (count - lastcount[slot] >= (unsigned)(snd_mixrate / 25)) || (count < lastcount[slot]))
   {
-    for (c = 0; c < w; c++)
+    int lo[CANVAS_MAXCW * 16], hi[CANVAS_MAXCW * 16];
+    unsigned char *cv = canvas_begin(5 + slot, cw, SCOPE_H);
+    if (!cv) return;
+    lastcount[slot] = count;
+    lastch[slot] = ch + 1;
+    lastmute[slot] = chn[ch].mute + 1;
+    lasth[slot] = h;
+    for (c = 0; c < w; c += 4) cv[((h - 1) / 2) * CANVAS_STRIDE + c] = 70;           // the middle line
+    if ((!chn[ch].mute) && (scope_render(ch, SCOPE_SPAN, w, h, SCOPE_FULL, lo, hi)))
     {
-      // at least 2 pixels high so that a flat wave is still a line
-      int top = lo[c], bot = hi[c] < lo[c] + 1 ? lo[c] + 1 : hi[c];
-      if (bot > h - 1) { bot = h - 1; if (top > bot - 1) top = bot - 1; }
-      for (y = top; y <= bot; y++) cv[y * CANVAS_STRIDE + c] = 255;
+      for (c = 0; c < w; c++)
+      {
+        // at least 2 pixels high so that a flat wave is still a line
+        int top = lo[c], bot = hi[c] < lo[c] + 1 ? lo[c] + 1 : hi[c];
+        if (bot > h - 1) { bot = h - 1; if (top > bot - 1) top = bot - 1; }
+        for (y = top; y <= bot; y++) cv[y * CANVAS_STRIDE + c] = 255;
+      }
     }
   }
   canvas_draw(5 + slot, x, PATT_SCOPE_Y, MKCOL(chn[ch].mute ? 3 : 11, bg));

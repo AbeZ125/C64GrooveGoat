@@ -809,7 +809,8 @@ int autoshotframes = 0;
 void fliptoscreen(void)
 {
   int x, y;
-  int firstrow = MAX_ROWS, lastrow = -1;
+  char rowdirty[MAX_ROWS];
+  int any = 0;
   static int presented = 0;
 
   if (!gfxinitted) return;
@@ -826,6 +827,7 @@ void fliptoscreen(void)
     presented = 0;
   }
 
+  memset(rowdirty, 0, sizeof rowdirty);
   for (y = 0; y < MAX_ROWS; y++)
   {
     unsigned *sptr = scrbuffer + y * MAX_COLUMNS;
@@ -836,21 +838,36 @@ void fliptoscreen(void)
       {
         cmpptr[x] = sptr[x];
         rendercell(x, y, sptr[x]);
-        if (y < firstrow) firstrow = y;
-        if (y > lastrow) lastrow = y;
+        rowdirty[y] = 1;
+        any = 1;
       }
     }
   }
   fulldirty = 0;
 
-  if (lastrow >= firstrow)
+  if (any)
   {
-    SDL_Rect r;
-    r.x = 0;
-    r.y = firstrow * CELLH * scale;
-    r.w = fbw;
-    r.h = (lastrow - firstrow + 1) * CELLH * scale;
-    SDL_UpdateTexture(texture, &r, fb + r.y * fbw, fbw * sizeof(Uint32));
+    // one upload for each run of changed rows (runs closer than 3 rows are joined), not for everything between the
+    // first and the last changed row: a clock at the top and a meter at the bottom would upload the whole screen
+    int y0 = 0;
+    while (y0 < MAX_ROWS)
+    {
+      int y1, gap;
+      SDL_Rect r;
+      if (!rowdirty[y0]) { y0++; continue; }
+      y1 = y0;
+      for (y = y0 + 1, gap = 0; y < MAX_ROWS && gap < 3; y++)
+      {
+        if (rowdirty[y]) { y1 = y; gap = 0; }
+        else gap++;
+      }
+      r.x = 0;
+      r.y = y0 * CELLH * scale;
+      r.w = fbw;
+      r.h = (y1 - y0 + 1) * CELLH * scale;
+      SDL_UpdateTexture(texture, &r, fb + r.y * fbw, fbw * sizeof(Uint32));
+      y0 = y1 + 1;
+    }
     presented = 0;
   }
 
