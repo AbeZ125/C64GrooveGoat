@@ -16,6 +16,7 @@
 
 #include "goattrk2.h"
 #include "gres.h"
+#include "ginslib.h"
 
 DIRENTRY direntry[MAX_DIRFILES];
 static char direntryinfo[MAX_DIRFILES][24];
@@ -45,6 +46,7 @@ void initpaths(void)
   getcwd(songpath, MAX_PATHNAME);
   strcpy(packedpath, songpath);
   // Instruments: start in the bundled library if it exists
+  library_locate();
   {
     struct stat st;
     if ((!stat(instrlibpath, &st)) && (st.st_mode & S_IFDIR))
@@ -477,6 +479,7 @@ int fileselector(char *name, char *path, char *filter, char *title, int filemode
             goto NEWPATH;
           }
           case 2:
+          library_locate();
           chdir(instrlibpath);
           goto NEWPATH;
           case 6:

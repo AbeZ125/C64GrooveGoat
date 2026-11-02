@@ -124,6 +124,7 @@ void togglepiano(void);
 void togglescope(void);
 extern char appdir[MAX_PATHNAME];
 extern char instrlibpath[MAX_PATHNAME];
+extern char instrlibcfg[MAX_PATHNAME];
 extern char examplespath[MAX_PATHNAME];
 extern unsigned char hexkeytbl[16];
 extern unsigned prgfrontend;

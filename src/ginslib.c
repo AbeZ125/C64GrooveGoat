@@ -8,6 +8,7 @@
 #include "goattrk2.h"
 #include "gres.h"
 #include "ginslib.h"
+#include "gfile.h"
 
 #define MAX_LIBCATS 64
 #define LIB_W 124
@@ -81,6 +82,91 @@ static int isdir(const char *path)
 {
   struct stat st;
   return (!stat(path, &st)) && (S_ISDIR(st.st_mode));
+}
+
+static int islibrary(const char *path)
+{
+  char b[MAX_PATHNAME];
+  snprintf(b, sizeof b, "%s/6581", path);
+  if (isdir(b)) return 1;
+  snprintf(b, sizeof b, "%s/8580", path);
+  return isdir(b);
+}
+
+// The library is the folder with the instruments (6581 and 8580 folders with a folder for every category). It is
+// looked for where the user pointed to (FOLDER... in the library, saved in the config), next to the program, in the
+// source tree the program was built in (build/<target>/ is two folders down), in the folder of the app bundle and in
+// the user's settings folder. The first folder that has it is used.
+void library_locate(void)
+{
+  char c[8][MAX_PATHNAME];
+  const char *home = getenv("HOME");
+  int n = 0, i;
+  if (!home) home = getenv("USERPROFILE");
+  if (instrlibcfg[0]) snprintf(c[n++], MAX_PATHNAME, "%s", instrlibcfg);
+  snprintf(c[n++], MAX_PATHNAME, "%sinstruments", appdir);
+  snprintf(c[n++], MAX_PATHNAME, "%s../../instruments", appdir);
+  snprintf(c[n++], MAX_PATHNAME, "%s../instruments", appdir);
+  snprintf(c[n++], MAX_PATHNAME, "%s../Resources/instruments", appdir);
+  if (home) snprintf(c[n++], MAX_PATHNAME, "%s/.groovegoat/instruments", home);
+  for (i = 0; i < n; i++)
+  {
+    if (islibrary(c[i]))
+    {
+      if (strcmp(instrlibpath, c[i])) { snprintf(instrlibpath, MAX_PATHNAME, "%s", c[i]); scanned = 0; }
+      return;
+    }
+  }
+}
+
+// Lets the user find the library: open any instrument in it (the folder above the 6581 / 8580 folder is the library,
+// or else the folder of the instrument). Returns 1 if a folder was chosen.
+static int library_choose(void)
+{
+  char name[MAX_FILENAME], path[MAX_PATHNAME], root[MAX_PATHNAME], filter[8];
+  const char *home = getenv("HOME");
+  int k;
+  name[0] = 0;
+  strcpy(filter, "*.ins");
+  if (!home) home = getenv("USERPROFILE");
+  snprintf(path, MAX_PATHNAME, "%s", isdir(instrlibpath) ? instrlibpath : (home ? home : "."));
+  if (!fileselector(name, path, filter, "FIND THE INSTRUMENT LIBRARY: open any instrument inside it", FILESEL_INSTRUMENT)) return 0;
+  if (!getcwd(root, MAX_PATHNAME)) return 0;
+  // up to the folder that holds the 6581 / 8580 folder
+  {
+    char up[MAX_PATHNAME];
+    snprintf(up, sizeof up, "%s", root);
+    for (k = 0; k < 4; k++)
+    {
+      char *sep = strrchr(up, '/');
+      const char *base;
+      if (!sep) sep = strrchr(up, '\\');
+      if (!sep) break;
+      base = sep + 1;
+      if ((!strcmp(base, "6581")) || (!strcmp(base, "8580")))
+      {
+        if (sep == up) sep++;
+        *sep = 0;
+        snprintf(root, MAX_PATHNAME, "%s", up);
+        break;
+      }
+      *sep = 0;
+    }
+  }
+  snprintf(instrlibcfg, MAX_PATHNAME, "%s", root);
+  snprintf(instrlibpath, MAX_PATHNAME, "%s", root);
+  return 1;
+}
+
+// Forget the list, so that it is read again from instrlibpath
+static void rescanlibrary(void)
+{
+  int c;
+  for (c = 0; c < libcount; c++) { free(lib[c].path); free(lib[c].name); }
+  libcount = 0;
+  for (c = 0; c < numcats; c++) free(catnames[c]);
+  numcats = 0;
+  scanned = 0;
 }
 
 static void scandir_rec(const char *rel, int depth, int model, int cat)
@@ -326,6 +412,7 @@ void instrumentlibrary(void)
   char iname[MAX_INSTRNAMELEN];
 
   if (!editorInfo.einum) editorInfo.einum = 1;
+  library_locate();
   scanlibrary();
   if (curmodel < 0) curmodel = editorInfo.sidmodel ? 1 : 0;
   previewing = 0;
@@ -348,12 +435,6 @@ void instrumentlibrary(void)
     sprintf(buf, "Instrument library  " GS_BULLET "  load into slot %02X", editorInfo.einum);
     dlg_drawframe(x0, y0, LIB_W, LIB_H, buf);
 
-    if (!libcount)
-    {
-      printtext(x0 + 3, y0 + 3, MKCOL(15, C_PANEL), "The instrument library was not found:");
-      printtext(x0 + 3, y0 + 4, MKCOL(7, C_PANEL), instrlibpath);
-    }
-
     // search field and chip model
     printglyph(x0 + 3, y0 + 2, MKCOL(14, C_PANEL), GL_SEARCH);
     printtext(x0 + 5, y0 + 2, MKCOL(7, C_PANEL), "Search");
@@ -365,6 +446,8 @@ void instrumentlibrary(void)
     ui_drawbutton(x0 + 57, y0 + 2, " 8580 ", 1002, 0, curmodel == 1);
     if ((mousey == y0 + 2) && (mousex >= x0 + 50) && (mousex < x0 + 56)) hitbtn = 1;
     if ((mousey == y0 + 2) && (mousex >= x0 + 57) && (mousex < x0 + 63)) hitbtn = 2;
+    ui_drawbutton(infox, y0 + 2, " FOLDER... ", 1003, 0, 0);
+    if ((mousey == y0 + 2) && (mousex >= infox) && (mousex < infox + 11)) hitbtn = 6;
     sprintf(buf, "%d of %d instruments", viewcount, libcount);
     printtext(listx + listw - (int)strlen(buf), y0 + 2, MKCOL(3, C_PANEL), buf);
 
@@ -458,6 +541,13 @@ void instrumentlibrary(void)
       "Type to search  UP/DOWN/PGUP/PGDN select  LEFT/RIGHT category  TAB 6581/8580  SPACE or click: preview  INS/* favourite");
     printtext(x0 + 3, y0 + LIB_H - 2, MKCOL(3, C_PANEL), "ENTER / double click = load into the instrument slot   ESC = close");
 
+    if (!libcount)                      // in the empty list, over everything else
+    {
+      printtext(listx + 2, y0 + 8, MKCOL(15, C_PANEL), "The instrument library was not found in:");
+      printtext(listx + 2, y0 + 9, MKCOL(7, C_PANEL), instrlibpath);
+      printtext(listx + 2, y0 + 11, MKCOL(15, C_PANEL), "Click FOLDER... (top right) and open any instrument");
+      printtext(listx + 2, y0 + 12, MKCOL(15, C_PANEL), "of the library: its folder is remembered.");
+    }
     fliptoscreen();
     getkey();
     if (win_quitted)
@@ -507,6 +597,21 @@ void instrumentlibrary(void)
       {
         curmodel = hitbtn - 1;
         buildview();
+      }
+      else if (hitbtn == 6)
+      {
+        restoreslot();
+        if (library_choose())
+        {
+          rescanlibrary();
+          scanlibrary();
+          libpos = 0;
+          libview = 0;
+          curcat = 0;
+          buildview();
+          setstatusmessage(libcount ? "Instrument library found" : "No instruments in that folder");
+        }
+        key = rawkey = 0;
       }
       else if (hitbtn == 3) rawkey = KEY_INS;
       else if (hitbtn == 4) rawkey = KEY_SPACE;

@@ -534,6 +534,14 @@ C64 GrooveGoat comes with a library of more than 5000 ready-made instruments ("S
 instruments for GoatTracker 2") in two sets, one for the old SID (6581) and one for the new SID
 (8580), sorted into categories such as bass, lead, drums, pads, strings and effects.
 
+The library is the folder "instruments" (with a 6581 and an 8580 folder in it). The program looks for
+it, in this order: the folder you chose with FOLDER... (below), next to the program, in the source
+folder the program was built from, in the app bundle, and in the settings folder
+(~/.groovegoat/instruments, on Windows next to the program). If it is not found the library window
+says so and shows where it looked. Click FOLDER... (top right in the library window), browse to
+any instrument of the library and open it: the folder that holds the 6581 and 8580 folders is
+used, and it is remembered in the settings file for the next time.
+
 Open the library with the Library button in the instrument header or with CTRL+L. The library
 window has three parts: the categories on the left, the instruments in the middle and the
 selected instrument with its ADSR graph on the right.

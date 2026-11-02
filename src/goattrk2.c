@@ -101,6 +101,7 @@ char instrpath[MAX_PATHNAME];
 char packedpath[MAX_PATHNAME];
 char appdir[MAX_PATHNAME];
 char instrlibpath[MAX_PATHNAME];
+char instrlibcfg[MAX_PATHNAME];        // the instrument library folder the user chose (saved in the config), or empty
 char examplespath[MAX_PATHNAME];
 
 char *programname = PROGRAMNAME;
@@ -715,6 +716,16 @@ static void loadconfig(void)
   getparam(configfile, &fontsetting);
   getparam(configfile, &keyboardsetting);
   getparam(configfile, &showscope);
+  for (;;)                                       // the library folder: the rest of the line, it may have spaces
+  {
+    if (!fgets(configbuf, MAX_PATHNAME, configfile)) break;
+    if ((configbuf[0]) && (configbuf[0] != ';') && (configbuf[0] != ' ') && (configbuf[0] != 13) && (configbuf[0] != 10))
+    {
+      configbuf[strcspn(configbuf, "\r\n")] = 0;
+      if (strcmp(configbuf, "-")) snprintf(instrlibcfg, MAX_PATHNAME, "%s", configbuf);
+      break;
+    }
+  }
   fclose(configfile);
   showpiano &= 1;
   showscope &= 1;
@@ -782,7 +793,8 @@ static void saveconfig(void)
     ";Piano keyboard on the screen of runnable PRGs (0 = no, 1 = yes)\n%d\n\n"
     ";Screen font (0 = Fira Code, 1 = MesloLGS NF)\n%d\n\n"
     ";On-screen piano (0 = hidden, 1 = shown)\n%d\n\n"
-    ";Oscilloscope above every channel (0 = hidden, 1 = shown)\n%d\n\n",
+    ";Oscilloscope above every channel (0 = hidden, 1 = shown)\n%d\n\n"
+    ";Instrument library folder (- = next to the program)\n%s\n\n",
     b,
     mr,
     hardsid,
@@ -833,7 +845,8 @@ static void saveconfig(void)
     prgpiano,
     fontsetting,
     showkeyboard,
-    showscope);
+    showscope,
+    instrlibcfg[0] ? instrlibcfg : "-");
   fclose(configfile);
 }
 
