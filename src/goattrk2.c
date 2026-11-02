@@ -503,6 +503,9 @@ int main(int argc, char **argv)
     return ok ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 
+  // The test runs (screenshots) never take the whole screen, whatever the saved window type is
+  if (getenv("GG_AUTOTEST")) win_fullscreen = 0;
+
   // Set screenmode
   theme = themesetting;
   if (fontsetting >= RES_NUMFONTS) fontsetting = 0;
