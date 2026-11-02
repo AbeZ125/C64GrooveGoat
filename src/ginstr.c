@@ -128,10 +128,11 @@ void instrumentcommands(void)
 
     case KEY_E:
     // SHIFT+E on a table pointer opens the step or speed editor on the program that the instrument starts, without
-    // looking for it in the table
+    // looking for it in the table; on the Attack/Decay or Sustain/Release value it opens the ADSR sliders
     if ((shiftpressed) && (editorInfo.einum))
     {
-      if ((editorInfo.eipos >= 2) && (editorInfo.eipos < 6))
+      if (editorInfo.eipos < 2) showadsreditor();
+      else if (editorInfo.eipos < 6)
       {
         int table = editorInfo.eipos - 2, p = instr[editorInfo.einum].ptr[table];
         if (!p) setstatusmessage("This instrument has no program in that table yet (SHIFT+ENTER makes one)");

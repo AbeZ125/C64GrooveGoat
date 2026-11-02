@@ -948,6 +948,7 @@ static void runautotest(void)
     if (!strcmp(scr, "loadins")) { editorInfo.editmode = EDIT_INSTRUMENT; load(); }
     if (!strcmp(scr, "clear")) clear();
     if (!strcmp(scr, "quit")) quit();
+    if (!strcmp(scr, "adsr")) { editorInfo.einum = 1; showadsreditor(); }
     if (!strcmp(scr, "instkey"))        // SHIFT+E in the instrument editor on the field GG_EIPOS (0-5)
     {
       editorInfo.editmode = EDIT_INSTRUMENT;
@@ -1362,6 +1363,7 @@ static void buttoncommand(int id, int param)
     editorInfo.editmode = EDIT_INSTRUMENT;
     editorInfo.eipos = 0;
     editorInfo.eicolumn = 0;
+    showadsreditor();
     break;
     case BTN_INSLOAD:
     {

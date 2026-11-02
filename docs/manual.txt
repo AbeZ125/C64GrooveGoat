@@ -447,7 +447,8 @@ and 64 on voice 1 repeated) so the voices stay in step when they loop.
 |  - + / < >    Select instrument
 |  SPACE        Play a test note (SHIFT+SPACE silences it)
 |  RETURN       Go to the table row of the wave/pulse/filter/vibrato pointer
-|  SHIFT+E      On a wave/pulse/filter/vibrato pointer: open the step or speed editor on that program at once
+|  SHIFT+E      On a wave/pulse/filter/vibrato pointer: open the step or speed editor on that program at once.
+|               On Attack/Decay or Sustain/Release: open the ADSR sliders
 |  SHIFT+RETURN Set the table pointer to an empty position or convert an old vibrato parameter
 |  SHIFT+N      Edit the instrument name
 |  SHIFT+S      Smart paste: move an instrument and renumber it in all patterns
@@ -780,6 +781,15 @@ example 03), or x2, x3 ... when several instruments share the row (x+ for ten or
 Before changing a program, look for the box: a change to a row that other instruments use changes those instruments as well.
 Only the start rows (the table pointers of the instruments) are marked; a row that a pattern command (8XY, 9XY, AXY) or a
 jump in the wavetable starts is not.
+
+### ADSR sliders
+
+SHIFT+E on Attack/Decay or Sustain/Release in the instrument editor, or a click on the envelope graph next to it, opens four
+sliders: attack, decay, sustain and release. Click or drag in a slider to set the value (0-F), or use UP / DOWN to choose a
+slider, LEFT / RIGHT to change it (SHIFT = 4 at a time) and the keys 0-9 and A-F to type a value. The instrument follows at once,
+and the graph shows the envelope with the times in milliseconds. PLAY (SPACE) plays a test note with the instrument and RELEASE
+(SHIFT+SPACE) lets it go; with PLAY WHEN LET GO on, a note plays every time you let go of a slider with the mouse, so you can hear the
+change while you drag. ENTER keeps the values, ESC puts the old values back.
 
 ### Step editor
 

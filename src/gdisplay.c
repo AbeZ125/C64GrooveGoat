@@ -109,7 +109,7 @@ static const char *buttonhint(int id)
     case BTN_LIBRARY: return "Instrument library: search, favourites, preview and load";
     case BTN_RANDOMINS: return "Random instrument generator (bass, drums, leads, pads, strings ...)";
     case BTN_STEREO: return "Editor playback: Mono or Stereo with 100%, 90%, 80% or 70% width (right click: back)";
-    case BTN_ADSRGRAPH: return "ADSR envelope of the instrument (Attack/Decay and Sustain/Release)";
+    case BTN_ADSRGRAPH: return "ADSR envelope of the instrument: click for the sliders (also SHIFT+E on Attack/Decay or Sustain/Release)";
   }
   return NULL;
 }
