@@ -19,5 +19,7 @@ cc -O2 -Wall -fsanitize=address,undefined -o build/keylayout_test tests/keylayou
 build/keylayout_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/voices_test tests/voices_test.c src/gvoices.c
 build/voices_test
+cc -O2 -Wall -fsanitize=address,undefined -o build/insuse_test tests/insuse_test.c src/ginsuse.c
+build/insuse_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/ordhint_test tests/ordhint_test.c src/gordhint.c
 build/ordhint_test

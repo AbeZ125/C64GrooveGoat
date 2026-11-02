@@ -447,6 +447,7 @@ and 64 on voice 1 repeated) so the voices stay in step when they loop.
 |  - + / < >    Select instrument
 |  SPACE        Play a test note (SHIFT+SPACE silences it)
 |  RETURN       Go to the table row of the wave/pulse/filter/vibrato pointer
+|  SHIFT+E      On a wave/pulse/filter/vibrato pointer: open the step or speed editor on that program at once
 |  SHIFT+RETURN Set the table pointer to an empty position or convert an old vibrato parameter
 |  SHIFT+N      Edit the instrument name
 |  SHIFT+S      Smart paste: move an instrument and renumber it in all patterns
@@ -763,6 +764,22 @@ Examples:
 |  06: FF 02
 
 The pattern commands 0XY, 8XY and EXY can not be executed from the wavetable.
+
+### Opening the editors from the instrument
+
+An instrument points at a program in each table (its Wavetable Pos, Pulsetable Pos, Filtertable Pos and Vibrato Param). Put the
+cursor on one of those values in the instrument editor and press SHIFT+E: the step editor (wave, pulse, filter) or the speed
+editor (vibrato) opens on exactly that program, and the table panel scrolls to it. There is no need to find the rows in the
+table, and no other program can be changed by mistake. If the instrument has no program in that table yet, SHIFT+RETURN makes
+one first.
+
+### Which instruments use a table row
+
+In the table panel a small box at the right of a row shows that instruments start there: the number of the instrument (for
+example 03), or x2, x3 ... when several instruments share the row (x+ for ten or more). The box is yellow for the instrument you are editing.
+Before changing a program, look for the box: a change to a row that other instruments use changes those instruments as well.
+Only the start rows (the table pointers of the instruments) are marked; a row that a pattern command (8XY, 9XY, AXY) or a
+jump in the wavetable starts is not.
 
 ### Step editor
 

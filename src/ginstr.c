@@ -126,6 +126,25 @@ void instrumentcommands(void)
     }
     break;
 
+    case KEY_E:
+    // SHIFT+E on a table pointer opens the step or speed editor on the program that the instrument starts, without
+    // looking for it in the table
+    if ((shiftpressed) && (editorInfo.einum))
+    {
+      if ((editorInfo.eipos >= 2) && (editorInfo.eipos < 6))
+      {
+        int table = editorInfo.eipos - 2, p = instr[editorInfo.einum].ptr[table];
+        if (!p) setstatusmessage("This instrument has no program in that table yet (SHIFT+ENTER makes one)");
+        else
+        {
+          settableview(table, p - 1);        // the table panel shows the program as well
+          if (table == STBL) showspeededitor();
+          else showstepeditor();
+        }
+      }
+    }
+    break;
+
     case KEY_SPACE:
     if (editorInfo.eipos != 9)
     {

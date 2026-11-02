@@ -7,6 +7,7 @@
 
 #include "goattrk2.h"
 #include "gordhint.h"
+#include "ginsuse.h"
 #include "gres.h"
 #include "gpiano.h"
 
@@ -691,6 +692,8 @@ static void drawinstrument(void)
   }
 }
 
+static INSUSE tableuse;                // see drawtables
+
 static void drawtables(void)
 {
   int c, d;
@@ -702,6 +705,14 @@ static void drawtables(void)
   for (c = 0; c < MAX_TABLES; c++)
     printtext(TBL_X(c), TBL_Y, MKCOL(C_HEADERTEXT, active ? C_BUTTONHI : C_HEADER), tnames[c]);
   fillarea(RP_X, TBL_ROWS_Y, RP_W, VISIBLETABLEROWS, MKCOL(8, C_PANEL), ' ');
+
+  {                                    // which instruments start at which row (marks at the right of the rows)
+    static unsigned char insptrs[MAX_INSTR][INSUSE_TABLES];
+    int i;
+    for (i = 0; i < MAX_INSTR; i++)
+      for (c = 0; c < INSUSE_TABLES; c++) insptrs[i][c] = instr[i].ptr[c];
+    insuse_build(&tableuse, MAX_INSTR, insptrs, editorInfo.einum);
+  }
 
   for (c = 0; c < MAX_TABLES; c++)
   {
@@ -741,6 +752,11 @@ static void drawtables(void)
       printtext(TBL_X(c), TBL_ROWS_Y + d, MKCOL(playing ? 15 : 3, bg), buf);
       sprintf(buf, "%02X %02X", ltable[c][p], rtable[c][p]);
       printtext(TBL_X(c) + 3, TBL_ROWS_Y + d, MKCOL(color, bg), buf);
+      {
+        char who[4];                   // "05" = instrument 05 starts here, "x3" = three instruments (yellow: the one being edited)
+        int use = insuse_label(&tableuse, c, p, who);
+        if (use) printtext(TBL_X(c) + 9, TBL_ROWS_Y + d, MKCOL(use == 2 ? 14 : 15, C_BUTTON), who);
+      }
 
       if (editorInfo.etmarknum == c)
       {

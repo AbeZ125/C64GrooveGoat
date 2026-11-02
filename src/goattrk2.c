@@ -948,6 +948,15 @@ static void runautotest(void)
     if (!strcmp(scr, "loadins")) { editorInfo.editmode = EDIT_INSTRUMENT; load(); }
     if (!strcmp(scr, "clear")) clear();
     if (!strcmp(scr, "quit")) quit();
+    if (!strcmp(scr, "instkey"))        // SHIFT+E in the instrument editor on the field GG_EIPOS (0-5)
+    {
+      editorInfo.editmode = EDIT_INSTRUMENT;
+      editorInfo.einum = 1;
+      editorInfo.eipos = getenv("GG_EIPOS") ? atoi(getenv("GG_EIPOS")) : 2;
+      rawkey = KEY_E;
+      shiftpressed = 1;
+      instrumentcommands();
+    }
   }
   while (frames--)
   {
