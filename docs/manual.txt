@@ -123,6 +123,20 @@ The Piano button in the status bar or CTRL+B (CMD+B on a Mac) switches the keybo
 it is on by default and the setting is saved. Without the piano the pattern editor, the tables
 and the song info get the space back (4 more rows).
 
+### Oscilloscopes
+
+Above every channel header of the pattern editor a small oscilloscope draws the wave that voice
+is making: the waveform after its envelope and before the filter, about 23 ms of it. A steady
+note stands still on the screen (the picture starts where the wave crosses its middle going up),
+the height follows the level (a decaying note shrinks), and a silent or muted voice is a flat
+line. You can see a saw, a pulse, noise or a combined waveform, and the effect of pulse width
+modulation, sync and ring modulation.
+
+The Scope button in the status bar or CTRL+J (CMD+J on a Mac) switches them on and off; they are on
+by default and the setting is saved. They take 2 rows from the pattern editor. Switched off, they
+cost nothing. Switched on, the SID emulation for the picture runs one extra time (a plain reSID
+without the filter), so a slow computer with 4 or 8 SIDs may prefer them off.
+
 ## Toolbar
 
 |  New          Start a new, empty song (asks for 1, 2, 4 or 8 SIDs)

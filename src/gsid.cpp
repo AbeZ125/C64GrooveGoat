@@ -15,6 +15,7 @@
 #include "resid-fp/sidfp.h"
 
 #include "gsid.h"
+#include "gscope.h"
 #include "gsound.h"
 
 int clockrate;
@@ -134,6 +135,30 @@ void sid_setscope(short *buf, int stride)
   }
 }
 
+// The live oscilloscope: the same capture, into a buffer of its own, fed to the scope history (gscope) as it is made.
+// Not used while an export has the capture.
+#define LIVESCOPE_STRIDE 16384
+static short livescope[MAX_SIDS * LIVESCOPE_STRIDE * 3];
+
+// True if the capture runs for all SIDs.
+int sid_scopeactive(void)
+{
+  int s;
+  if (!scopeout) return 0;
+  for (s = 0; s < sidcount; s++)
+    if (!scopesid[s]) return 0;
+  return 1;
+}
+
+void sid_livescope(int on)
+{
+  if (on)
+  {
+    if ((!scopeout) || (scopeout == livescope)) sid_setscope(livescope, LIVESCOPE_STRIDE);
+  }
+  else if (scopeout == livescope) sid_setscope(NULL, 0);
+}
+
 void sid_setsolosid(int s)
 {
   solosid = (s >= 0) && (s < MAX_SIDS) ? s : -1;
@@ -187,6 +212,8 @@ void sid_init(int speed, unsigned m, unsigned ntsc, unsigned interpolate, unsign
 
   samplerate = speed;
   chipmodel = m;
+  for (s = 0; s < MAX_SIDS; s++)
+    if (scopesid[s]) { delete scopesid[s]; scopesid[s] = NULL; }
   if (nsids < 1) nsids = 1;
   if (nsids > MAX_SIDS) nsids = MAX_SIDS;
 
@@ -436,7 +463,12 @@ int sid_fillbuffer(short *ptr, int samples, unsigned int adparam, int stereo)
         gl = gr = 1.0f;
       }
       fillone(s, sidbuf, samples, adparam);
-      if ((scopeout) && (scopesid[s]) && (samples <= scopestride)) fillscope(s, samples, adparam);
+      if ((scopeout) && (scopesid[s]) && (samples <= scopestride))
+      {
+        int v;
+        fillscope(s, samples, adparam);
+        for (v = 0; v < 3; v++) scope_add(s * 3 + v, scopeout + s * scopestride * 3 + v, 3, samples);
+      }
       for (c = 0; c < samples; c++)
       {
         float v = sidbuf[c];

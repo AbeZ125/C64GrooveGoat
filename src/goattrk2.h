@@ -48,7 +48,8 @@
 #define KEY_DMC 1
 #define KEY_JANKO 2
 
-#define VISIBLEPATTROWS (showpiano ? 37 : 41)
+extern unsigned showscope;
+#define VISIBLEPATTROWS ((showpiano ? 37 : 41) - (showscope ? 2 : 0))
 #define VISIBLEORDERLIST 13
 #define VISIBLETABLEROWS (showpiano ? 16 : 20)
 #define VISIBLEFILES 30
@@ -120,6 +121,7 @@ extern char textbuffer[MAX_PATHNAME];
 extern unsigned stereomode;
 int stereowidth(void);
 void togglepiano(void);
+void togglescope(void);
 extern char appdir[MAX_PATHNAME];
 extern char instrlibpath[MAX_PATHNAME];
 extern char examplespath[MAX_PATHNAME];

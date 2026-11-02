@@ -298,6 +298,7 @@ static unsigned char canvasbuf[MAX_CANVAS][CANVAS_MAXCH * 32 * CANVAS_MAXCW * 16
 static unsigned char canvasprev[MAX_CANVAS][CANVAS_MAXCH * 32 * CANVAS_MAXCW * 16];
 static int canvascw[MAX_CANVAS];
 static int canvasch[MAX_CANVAS];
+static int canvasdrawn[MAX_CANVAS];             // rows * 1000 + columns of the last drawing
 
 unsigned char *canvas_begin(int id, int cw, int ch)
 {
@@ -306,7 +307,8 @@ unsigned char *canvas_begin(int id, int cw, int ch)
   if (ch > CANVAS_MAXCH) ch = CANVAS_MAXCH;
   canvascw[id] = cw;
   canvasch[id] = ch;
-  memset(canvasbuf[id], 0, sizeof canvasbuf[id]);
+  // only the rows that are used: a canvas is much smaller than its largest size
+  memset(canvasbuf[id], 0, (size_t)ch * 32 * CANVAS_STRIDE);
   return canvasbuf[id];
 }
 
@@ -315,8 +317,14 @@ void canvas_draw(int id, int x, int y, int color)
   int cx, cy;
   int changed;
   if ((id < 0) || (id >= MAX_CANVAS) || (!scrbuffer)) return;
-  changed = memcmp(canvasbuf[id], canvasprev[id], sizeof canvasbuf[id]) != 0;
-  if (changed) memcpy(canvasprev[id], canvasbuf[id], sizeof canvasbuf[id]);
+  {
+    size_t used = (size_t)canvasch[id] * 32 * CANVAS_STRIDE;
+    // a canvas of another size is a changed canvas: the old picture is only compared for the rows it has now
+    int size = canvasch[id] * 1000 + canvascw[id];
+    changed = (canvasdrawn[id] != size) || (memcmp(canvasbuf[id], canvasprev[id], used) != 0);
+    if (changed) memcpy(canvasprev[id], canvasbuf[id], used);
+    canvasdrawn[id] = size;
+  }
   for (cy = 0; cy < canvasch[id]; cy++)
   {
     for (cx = 0; cx < canvascw[id]; cx++)

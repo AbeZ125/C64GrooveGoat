@@ -60,7 +60,7 @@ void fillarea(int x, int y, int w, int h, int color, int glyph);
 void drawpanel(int x, int y, int w, int h, const char *title, int active);
 void drawimage(int x, int y, const char *name, int cellsw, int cellsh);
 void drawrainbow(int x, int y, int length);
-#define MAX_CANVAS 5
+#define MAX_CANVAS 11                 // 0-4: windows and panels, 5-10: the channel oscilloscopes
 #define CANVAS_MAXCW 48
 #define CANVAS_MAXCH 8
 #define CANVAS_STRIDE (CANVAS_MAXCW * 16)

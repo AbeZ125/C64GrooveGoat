@@ -23,3 +23,5 @@ cc -O2 -Wall -fsanitize=address,undefined -o build/insuse_test tests/insuse_test
 build/insuse_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/ordhint_test tests/ordhint_test.c src/gordhint.c
 build/ordhint_test
+cc -O2 -Wall -fsanitize=address,undefined -o build/scope_test tests/scope_test.c src/gscope.c -lm
+build/scope_test

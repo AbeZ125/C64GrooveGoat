@@ -13,8 +13,12 @@
 #define PATT_X 0
 #define PATT_Y 2                      // panel header row
 #define PATT_TOOLS_Y 3                // pattern tool buttons (transpose, mark, cut ...)
-#define PATT_CHNHDR_Y 4               // channel header row
-#define PATT_ROWS_Y 5                 // first pattern row
+// The oscilloscopes (on / off) take two rows above the channel headers
+extern unsigned showscope;
+#define SCOPE_H (showscope ? 2 : 0)
+#define PATT_SCOPE_Y 4                // oscilloscope row (a picture 2 cells high for every channel)
+#define PATT_CHNHDR_Y (4 + SCOPE_H)   // channel header row
+#define PATT_ROWS_Y (5 + SCOPE_H)     // first pattern row
 #define PATT_W 94
 #define VISIBLECHANNELS 6
 #define CHN_W 15                      // width of one channel column

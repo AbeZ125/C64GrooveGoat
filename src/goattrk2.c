@@ -81,6 +81,7 @@ unsigned mastervolume = 80;
 unsigned showwelcome = 1;
 unsigned kbdlayoutsetting = 2;
 unsigned showpiano = 1;        // piano keyboard above the status bar
+unsigned showscope = 1;        // an oscilloscope above every channel
 unsigned keyboardsetting = 0;        // the on-screen piano is shown (saved in the config)
 unsigned fontsetting = 0;            // the screen font, an index into res_fontnames
 float basepitch = 0.0f;
@@ -709,8 +710,10 @@ static void loadconfig(void)
   getparam(configfile, &prgpiano);
   getparam(configfile, &fontsetting);
   getparam(configfile, &keyboardsetting);
+  getparam(configfile, &showscope);
   fclose(configfile);
   showpiano &= 1;
+  showscope &= 1;
   prgpiano &= 1;
   if (!strcmp(specialnotenames, "-")) specialnotenames[0] = 0;
   if (!strcmp(scalatuningfilepath, "-")) scalatuningfilepath[0] = 0;
@@ -774,7 +777,8 @@ static void saveconfig(void)
     ";Show the piano keyboard (0 = no, 1 = yes)\n%d\n\n"
     ";Piano keyboard on the screen of runnable PRGs (0 = no, 1 = yes)\n%d\n\n"
     ";Screen font (0 = Fira Code, 1 = MesloLGS NF)\n%d\n\n"
-    ";On-screen piano (0 = hidden, 1 = shown)\n%d\n\n",
+    ";On-screen piano (0 = hidden, 1 = shown)\n%d\n\n"
+    ";Oscilloscope above every channel (0 = hidden, 1 = shown)\n%d\n\n",
     b,
     mr,
     hardsid,
@@ -824,7 +828,8 @@ static void saveconfig(void)
     showpiano,
     prgpiano,
     fontsetting,
-    showkeyboard);
+    showkeyboard,
+    showscope);
   fclose(configfile);
 }
 
@@ -964,6 +969,7 @@ static void runautotest(void)
     printstatus();
     fliptoscreen();
     getkey();
+    if (getenv("GG_FRAMEDELAY")) SDL_Delay(atoi(getenv("GG_FRAMEDELAY")));      // let the sound run between frames
   }
   if (getenv("GG_CHORD"))
   {
@@ -1232,6 +1238,15 @@ void togglepiano(void)
   printmainscreen();
 }
 
+// Oscilloscopes on / off: they take two rows above the channel headers, from the pattern editor
+void togglescope(void)
+{
+  showscope ^= 1;
+  editorInfo.epview = editorInfo.eppos - VISIBLEPATTROWS / 2;
+  setstatusmessage(showscope ? "Oscilloscopes on (CTRL+J)" : "Oscilloscopes off (CTRL+J)");
+  printmainscreen();
+}
+
 // Pattern tool buttons: run the editor command of the shortcut
 static void patternkey(int k)
 {
@@ -1251,6 +1266,12 @@ void docommand(void)
   if (((ctrlpressed) || (metapressed)) && (!altpressed) && (rawkey == KEY_B))
   {
     togglepiano();
+    key = 0;
+    rawkey = 0;
+  }
+  if (((ctrlpressed) || (metapressed)) && (!altpressed) && (rawkey == KEY_J))
+  {
+    togglescope();
     key = 0;
     rawkey = 0;
   }
@@ -1513,6 +1534,7 @@ static void buttoncommand(int id, int param)
     case BTN_SIDADDR: showsidinfo(); break;
     case BTN_QUIT: quit(); break;
     case BTN_PIANO: togglepiano(); break;
+    case BTN_SCOPE: togglescope(); break;
     case BTN_TRANSUP: patternkey(KEY_Q); break;
     case BTN_TRANSDN: patternkey(KEY_A); break;
     case BTN_OCTUP: patternkey(KEY_W); break;

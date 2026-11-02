@@ -32,6 +32,8 @@ void sid_setvolume(int percent);
 void sid_setvolumeimmediate(int percent);
 void sid_setvoicemask(int s, int mutemask);
 void sid_setscope(short *buf, int stride);
+int sid_scopeactive(void);
+void sid_livescope(int on);
 // width: stereo width in percent (0 = mono, 100 = full spread)
 void sid_setpanning(int nsids, int width);
 void sid_setsolosid(int s);

@@ -10,6 +10,7 @@
 #include "ginsuse.h"
 #include "gres.h"
 #include "gpiano.h"
+#include "gscope.h"
 
 char *notename[] =
  {"C-0", "C#0", "D-0", "D#0", "E-0", "F-0", "F#0", "G-0", "G#0", "A-0", "A#0", "B-0",
@@ -310,6 +311,42 @@ static int chnlevel(int c)
   return env;
 }
 
+// The oscilloscope of a channel: the wave of the voice (after the envelope, before the filter), 2 cells high, above
+// the channel header. A flat line while the voice is silent or muted.
+#define SCOPE_SPAN 1024               // samples shown (about 23 ms)
+#define SCOPE_FULL 2100               // half the height of the wave of a voice at full level (about 4100 high)
+
+static void drawscope(int slot, int ch, int x, int bg)
+{
+  int cw = CHN_W - 1, w = cw * 16, h = SCOPE_H * 32, c, y;
+  int lo[CANVAS_MAXCW * 16], hi[CANVAS_MAXCW * 16];
+  unsigned char *cv = canvas_begin(5 + slot, cw, SCOPE_H);
+  if (!cv) return;
+  for (c = 0; c < w; c += 4) cv[((h - 1) / 2) * CANVAS_STRIDE + c] = 70;           // the middle line
+  if ((!chn[ch].mute) && (scope_render(ch, SCOPE_SPAN, w, h, SCOPE_FULL, lo, hi)))
+  {
+    for (c = 0; c < w; c++)
+    {
+      // at least 2 pixels high so that a flat wave is still a line
+      int top = lo[c], bot = hi[c] < lo[c] + 1 ? lo[c] + 1 : hi[c];
+      if (bot > h - 1) { bot = h - 1; if (top > bot - 1) top = bot - 1; }
+      for (y = top; y <= bot; y++) cv[y * CANVAS_STRIDE + c] = 255;
+    }
+  }
+  canvas_draw(5 + slot, x, PATT_SCOPE_Y, MKCOL(chn[ch].mute ? 3 : 11, bg));
+}
+
+// Starts or stops the capture of the voices when the oscilloscopes are switched on or off (or the SIDs are made again)
+static void updatescope(void)
+{
+  if ((showscope != 0) != (sid_scopeactive() != 0))
+  {
+    snd_lock();
+    sid_livescope(showscope);
+    snd_unlock();
+  }
+}
+
 static void drawpatterns(void)
 {
   int c, d, i;
@@ -319,6 +356,7 @@ static void drawpatterns(void)
 
   (void)cc;
   validatechnview();
+  updatescope();
 
   // Panel header
   printblankc(PATT_X, PATT_Y, MKCOL(C_HEADERTEXT, editorInfo.editmode == EDIT_PATTERN ? C_BUTTONHI : C_HEADER), PATT_W);
@@ -361,6 +399,7 @@ static void drawpatterns(void)
   }
 
   // Background of the pattern area
+  if (showscope) fillarea(PATT_X, PATT_SCOPE_Y, PATT_W, SCOPE_H, MKCOL(8, C_PANEL), ' ');
   fillarea(PATT_X, PATT_CHNHDR_Y, PATT_W, VISIBLEPATTROWS + 1, MKCOL(8, C_PANEL), ' ');
 
   if ((followplay) && (isplaying()))
@@ -402,6 +441,8 @@ static void drawpatterns(void)
     int hdrbg = (ch == editorInfo.epchn) ? C_SELECT : C_PANEL;
     if (ch >= numchannels) break;
     pn = editorUndoInfo.editorInfo[ch].epnum;
+
+    if (showscope) drawscope(i, ch, x - 1, hdrbg);
 
     // Channel header
     printblankc(x - 1, PATT_CHNHDR_Y, MKCOL(15, hdrbg), CHN_W - 1);
@@ -836,6 +877,8 @@ static void drawstatusarea(void)
   ui_drawbutton(x, STATUS_Y, " " GS_REDO " Redo ", BTN_REDO, 0, 0);
   x += 9;
   ui_drawbutton(x, STATUS_Y, " " GS_NOTE " Piano ", BTN_PIANO, 0, showpiano);
+  x += 9;
+  ui_drawbutton(x, STATUS_Y, " Scope ", BTN_SCOPE, 0, showscope);
 
   // Play status and time
   if (editorInfo.multiplier)
@@ -1008,6 +1051,7 @@ static int tooltip(int id, const char **name, const char **keys)
     case BTN_UNDO: *name = "Undo"; *keys = "CTRL+Z"; break;
     case BTN_REDO: *name = "Redo"; *keys = "CTRL+Y"; break;
     case BTN_PIANO: *name = "Piano keyboard on / off"; *keys = "CTRL+B"; break;
+    case BTN_SCOPE: *name = "Oscilloscope of every channel on / off"; *keys = "CTRL+J"; break;
     case BTN_PIANOKEY: *name = "Click a key to play the note (current instrument and voice)"; break;
     case BTN_CHNVIEW: *name = "Show the voices of these SIDs"; break;
     case BTN_ORDVIEW: *name = "Scroll the orderlist voices"; break;

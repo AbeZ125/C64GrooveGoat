@@ -219,6 +219,8 @@ static const char *newkeys[] = {
   "              2 min., restore after a crash",
   "Piano         Played notes of all voices,",
   "              click a key to play (CTRL+B)",
+  "Scopes        Wave of every voice above its",
+  "              channel (CTRL+J on/off)",
   "Pattern tools Transpose, mark, cut/copy/paste",
   "              buttons above the pattern editor",
   NULL
