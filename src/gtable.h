@@ -28,6 +28,7 @@ void optimizetable(int num);
 void deleteinstrtable(int i);
 int tablepartreferenced(int num, int pos, int len, int ins);
 int gettablelen(int num);
+int table_makeroom(int num, int pos, int count);
 int gettablepartlen(int num, int pos);
 void gototable(int num, int pos);
 void settableview(int num, int pos);

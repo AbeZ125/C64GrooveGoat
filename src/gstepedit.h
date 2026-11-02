@@ -9,7 +9,7 @@
 #ifndef GSTEPEDIT_H
 #define GSTEPEDIT_H
 
-#define STEP_MAX 16               // ticks that can be edited
+#define STEP_MAX 32               // ticks that can be edited
 #define STEP_WAVE 0
 #define STEP_PULSE 1
 #define STEP_FILTER 2
@@ -48,6 +48,9 @@ int step_generate(const STEPMODEL *m, unsigned char *left, unsigned char *right,
 // How many rows are available for a program that starts at startrow: the rows of the program that is there now
 // (up to and including its FF row) plus the empty rows (00 00) after it.
 int step_capacity(const unsigned char *left, const unsigned char *right, int startrow);
+
+// Number of rows up to the last one that is not empty (00 00).
+int step_tablelen(const unsigned char *left, const unsigned char *right);
 
 // Writes the rows over the old program (the rest of the old program is cleared). Returns 0, and changes nothing,
 // if they do not fit.

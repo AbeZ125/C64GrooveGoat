@@ -831,7 +831,7 @@ played. TYPE... asks for your own list, for example "0 3 7" (up 3, then up 7) or
 numbers with spaces or commas, a minus sign goes down. The Speed buttons set how many ticks each note lasts
 (1T = the fastest, a new note every frame; the time per note is shown on the first Arp row), and UP / UP-DOWN
 chooses between 0 4 7 0 4 7 ... and 0 4 7 4 0 4 7 4 ... The waveform of the chosen tick is used for every
-note, and the program loops from the first tick. An arpeggio can take 16 ticks at most (notes times ticks per
+note, and the program loops from the first tick. An arpeggio can take 32 ticks at most (notes times ticks per
 note, and twice the notes minus two for UP-DOWN); the editor says so if it is too long. Afterwards the ticks
 can be changed like any others, for example drawing the notes with the mouse. Use the instrument's wave table
 pointer as usual: the arpeggio runs each time a note starts.
@@ -840,9 +840,12 @@ For example 5 ticks with square, square, pulse, noise and a loop makes the rows
 "41 00 / 00 80 / ..." by itself: a run of identical ticks becomes a delay row, and in the pulse editor a
 steady sweep becomes one modulation row. With Live on (the default) the table follows every change, so a
 playing note changes at once; ESC puts the old rows back. The new program replaces the old one in its
-place: it may use the rows of the old program and the empty rows after it, but never the rows of the next
-program. If it does not fit, the editor says so. Programs with pattern commands, or longer than 16
-ticks, are edited in the table.
+place: it first uses the rows of the old program and the empty rows after it. If it needs more, the editor says
+how many, and KEEP CHANGES makes room: it adds empty rows after the program and moves the programs behind it
+down. Every instrument, pattern command (8XY, 9XY, AXY) and jump that pointed at a moved row follows, so no
+other program is overwritten or changed. (While you edit, the live preview only follows as long as the rows fit
+in place.) This is only refused when the table is too full to move the rows; SHIFT+O in the table editor first
+removes the rows nothing uses. Programs with pattern commands, or longer than 32 ticks, are edited in the table.
 
 ### Playing row highlight
 

@@ -155,7 +155,7 @@ void showstepeditor(void)
   int start;
   STEPMODEL m;
   unsigned char gl[300], gr[300], savel[MAX_TABLELEN], saver[MAX_TABLELEN];
-  int nrows, cap, fits;
+  int nrows, cap, fits, room = 0;
   int sel = 0, live = 1, result = 0;           // result: 1 = keep, 2 = undo
   int status;
   const char *msg = "";
@@ -188,7 +188,7 @@ void showstepeditor(void)
   }
   if (status == STEP_TOOLONG)
   {
-    const char *lines[3] = {"Step editor", "", "This program is longer than 16 ticks: edit it in the table."};
+    const char *lines[3] = {"Step editor", "", "This program is longer than 32 ticks: edit it in the table."};
     dlg_message("Step editor", lines, 3);
     return;
   }
@@ -199,12 +199,17 @@ void showstepeditor(void)
 
   while (!result)
   {
-    int h = (table == FTBL ? 38 : (table == WTBL ? 35 : 31)) + PADH + 2, x = (MAX_COLUMNS - win_w) / 2, y = (MAX_ROWS - h) / 2 - 1;
-    int x0 = x + STRIP_X, ly, i;
+    int shown = m.n > 16 ? m.n : 16;            // ticks the strip and pad have room for; the window widens for long programs
+    int h = (table == FTBL ? 38 : (table == WTBL ? 35 : 31)) + PADH + 2, x, y = (MAX_ROWS - h) / 2 - 1;
+    int x0, ly, i;
     char buf[100], t[24];
     int changed = 0;
     STEPBTN btn[MAXBTN];
     int nb = 0, shiftflag, padrow;
+
+    win_w = TICKW * shown + 16;
+    x = (MAX_COLUMNS - win_w) / 2;
+    x0 = x + STRIP_X;
 
     // The rows this makes, and whether they fit in the table in place of the old program
     {
@@ -214,6 +219,7 @@ void showstepeditor(void)
       nrows = step_generate(&m, gl, gr, start);
       cap = step_capacity(cl, cr, start);
       fits = nrows <= cap;
+      room = (nrows - cap) <= (255 - step_tablelen(cl, cr));     // rows could be made by shifting the later programs down
     }
 
     printstatus();
@@ -225,7 +231,7 @@ void showstepeditor(void)
     printtext(x + 38 + 18, ly, MKCOL(m.n < STEP_MAX ? 15 : 3, C_PANEL), "[ + ]");
     ly += 2;
 
-    drawstrip(&m, sel, TICKW * STEP_MAX);
+    drawstrip(&m, sel, TICKW * shown);
     canvas_draw(STEP_CANVAS, x0, ly, MKCOL(11, C_PANEL));
     printtext(x + 2, ly, MKCOL(3, C_PANEL), table == WTBL ? "wave" : (table == PTBL ? "pulse" : "cutoff"));
     printtext(x + 2, ly + 1, MKCOL(3, C_PANEL), table == FTBL ? "bars" : "shape");
@@ -266,7 +272,7 @@ void showstepeditor(void)
     ly += 5;
 
     padrow = ly;
-    drawpad(&m, sel, TICKW * STEP_MAX);
+    drawpad(&m, sel, TICKW * shown);
     canvas_draw(PAD_CANVAS, x0, padrow, MKCOL(11, C_PANEL));
     printtext(x + 2, padrow, MKCOL(3, C_PANEL), table == WTBL ? "+24" : "100%");
     printtext(x + 2, padrow + PADH / 2, MKCOL(3, C_PANEL), table == WTBL ? "  0" : " 50%");
@@ -325,7 +331,12 @@ void showstepeditor(void)
     ly++;
     snprintf(buf, sizeof buf, "%d row%s needed, %d available%s", nrows, nrows == 1 ? "" : "s", cap, live ? "   (live: the table follows your edits)" : "");
     printtext(x + 3, ly, MKCOL(fits ? 7 : 14, C_PANEL), buf);
-    if (!fits) printtext(x + 3, ly + 1, MKCOL(14, C_PANEL), "Too many rows: remove ticks or make room after this program.");
+    if (!fits && room)
+    {
+      snprintf(buf, sizeof buf, "%d more row%s than fit: KEEP moves the programs after this one down to make room.", nrows - cap, nrows - cap == 1 ? "" : "s");
+      printtext(x + 3, ly + 1, MKCOL(14, C_PANEL), buf);
+    }
+    else if (!fits) printtext(x + 3, ly + 1, MKCOL(14, C_PANEL), "The table is full: remove ticks, or free rows in this table first (SHIFT+O there).");
     else if (instr[editorInfo.einum].ptr[table] != start)
     {
       snprintf(buf, sizeof buf, "Note: instrument %02X uses row %02X of this table, not this program.", editorInfo.einum, instr[editorInfo.einum].ptr[table]);
@@ -533,7 +544,7 @@ void showstepeditor(void)
               if (dlg_edittext("ARPEGGIO", "Semitones above the note:", text, 40, 0))
               {
                 int pc = step_arp_parse(text, sv, ARP_MAXNOTES);
-                if (pc < 0) msg = "Type the semitones separated by spaces, like 0 4 7 (up to 16, -32 to 95).";
+                if (pc < 0) msg = "Type the semitones separated by spaces, like 0 4 7 (up to 32, -32 to 95).";
                 else { ncarp = pc; memcpy(carp, sv, sizeof(int) * pc); arpidx = ARP_PRESETS; }
               }
               key = 0; rawkey = 0;
@@ -544,7 +555,7 @@ void showstepeditor(void)
             {
               int wv = (m.wave[sel] & 0xf0) ? m.wave[sel] : 0x41;
               if (step_arp(&m, sv, cnt, arphold, arpping, wv)) { sel = 0; changed = 1; msg = ""; }
-              else msg = "That is more than 16 ticks: use a shorter speed, UP instead of UP-DOWN, or fewer notes.";
+              else msg = "That is more than 32 ticks: use a shorter speed, UP instead of UP-DOWN, or fewer notes.";
             }
             else if (arpidx < 0) msg = "Choose a chord first (MAJ, MIN, ...) or TYPE the semitones yourself.";
           }
@@ -571,7 +582,7 @@ void showstepeditor(void)
     if (rawkey == KEY_ESC) result = 2;
     if (rawkey == KEY_ENTER)
     {
-      if (fits) result = 1;
+      if (fits || room) result = 1;
       else msg = "Does not fit yet.";
     }
     if (rawkey == KEY_LEFT && sel > 0) sel--;
@@ -688,9 +699,15 @@ void showstepeditor(void)
   if (result == 1)
   {
     unsigned char cl[MAX_TABLELEN], cr[MAX_TABLELEN];
-    memcpy(cl, savel, MAX_TABLELEN);
-    memcpy(cr, saver, MAX_TABLELEN);
+    memcpy(ltable[table], savel, MAX_TABLELEN);
+    memcpy(rtable[table], saver, MAX_TABLELEN);
     nrows = step_generate(&m, gl, gr, start);
+    cap = step_capacity(savel, saver, start);
+    // Not enough rows in place: add empty rows after the program. inserttable moves everything behind them down and
+    // updates every instrument, pattern command and jump that points there, so no other program is touched.
+    table_makeroom(table, start - 1 + cap, nrows - cap);
+    memcpy(cl, ltable[table], MAX_TABLELEN);
+    memcpy(cr, rtable[table], MAX_TABLELEN);
     step_write(cl, cr, start, gl, gr, nrows);
     memcpy(ltable[table], cl, MAX_TABLELEN);
     memcpy(rtable[table], cr, MAX_TABLELEN);

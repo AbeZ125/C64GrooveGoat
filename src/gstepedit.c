@@ -227,6 +227,14 @@ int step_capacity(const unsigned char *left, const unsigned char *right, int sta
   return cap;
 }
 
+int step_tablelen(const unsigned char *left, const unsigned char *right)
+{
+  int k;
+  for (k = 255; k >= 1; k--)
+    if (!emptyrow(left, right, k)) break;
+  return k;
+}
+
 int step_write(unsigned char *left, unsigned char *right, int startrow, const unsigned char *gl, const unsigned char *gr, int nrows)
 {
   int cap = step_capacity(left, right, startrow), k;
