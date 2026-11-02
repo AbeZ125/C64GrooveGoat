@@ -81,4 +81,6 @@ void expandpattern(void);
 void splitpattern(void);
 void joinpattern(void);
 
+int pattern_glide(int row, int choice);
+
 #endif

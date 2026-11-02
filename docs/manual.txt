@@ -375,6 +375,7 @@ mouse button on a transpose, mark or pattern button repeats it.
 |  SHIFT+J / K  Join pattern with the next one in the orderlist / split pattern at the cursor
 |  SHIFT+H      Calculate a "hifi" speedtable entry for portamento or vibrato
 |  SHIFT+I      Invert selection or the whole pattern
+|  SHIFT+T      Glide into the note under the cursor (see "Glide between two notes")
 |  SHIFT+G      Show / hide the pattern command guide (see "Pattern commands")
 |  SHIFT+CURSOR Mark pattern data (up/down), select pattern (left/right)
 |  SHIFT+L      Mark / unmark the whole pattern
@@ -401,6 +402,22 @@ entered:
 
 Autoadvance modes: advance after notes and data bytes (all), advance only after notes, or no
 automatic advance. The step size (Step) sets how many rows the cursor moves.
+
+### Glide between two notes
+
+To let a note slide into the next one instead of starting again (a portamento, or "glide"), put
+the cursor on the second note and press SHIFT+T. The window shows the two notes (the second note
+and the nearest note above it in the same pattern) and asks how long the slide takes: Instant,
+0.05, 0.1, 0.2, 0.4 or 0.8 seconds. Whatever the distance between the notes is, the slide takes
+that long (a one-octave jump and a one-semitone step both take 0.2 s if you choose 0.2 s).
+
+What it writes is the pattern command 3XY (tone portamento) on the second note, with a speedtable
+entry that is made for the two notes (an entry that is already there is used again). The second note
+does not restart the sound: the first note keeps playing and its pitch moves to the new note and
+stays there. "Instant" writes 300 (a tie note): the pitch jumps to the second note at once, without
+a new attack. The status line tells which entry was made and how many ticks the slide takes.
+The speed is fixed in the table, so if you change one of the notes afterwards, press SHIFT+T
+again. With the song transposed (an orderlist +/- entry) the slide takes a little more or less.
 
 ## Orderlist editor (F6)
 

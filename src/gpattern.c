@@ -5,6 +5,9 @@
 #define GPATTERN_C
 
 #include "goattrk2.h"
+#include "gglide.h"
+#include "gsumui.h"
+#include "gdialog.h"
 
 EDITOR_INFO editorInfo;
 
@@ -37,6 +40,75 @@ int cmdcopyrows = 0;
 //int editorInfo.epmarkchn = -1;
 //int editorInfo.epmarkstart;
 //int editorInfo.epmarkend;
+
+// Makes the note at "row" of the cursor's pattern a glide: the pitch slides from the note before it (in the pattern)
+// to this one in the time of "choice" (0 = at once, a tie note; 1-5 = 0.05 s, 0.1 s, 0.2 s, 0.4 s, 0.8 s), without
+// starting the sound again. That is a tone portamento (3XY) with a speedtable entry made for these two notes.
+// Returns 1 if it was done, else 0 and the reason in the status line.
+static const char *glidelabels[] = {"Instant", "0.05 s", "0.1 s", "0.2 s", "0.4 s", "0.8 s"};
+static const double glideseconds[] = {0, 0.05, 0.1, 0.2, 0.4, 0.8};
+
+static int glideprev(int row)
+{
+  unsigned char *p = pattern[editorUndoInfo.editorInfo[editorInfo.epchn].epnum];
+  int r;
+  if ((row >= pattlen[editorUndoInfo.editorInfo[editorInfo.epchn].epnum]) || (p[row * 4] < FIRSTNOTE) || (p[row * 4] > LASTNOTE)) return -2;
+  for (r = row - 1; r >= 0; r--)
+    if ((p[r * 4] >= FIRSTNOTE) && (p[r * 4] <= LASTNOTE)) return r;
+  return -1;
+}
+
+int pattern_glide(int row, int choice)
+{
+  unsigned char *p = pattern[editorUndoInfo.editorInfo[editorInfo.epchn].epnum];
+  int prev = glideprev(row), f1, f2;
+
+  if (prev == -2) { setstatusmessage("Glide: put the cursor on a note (SHIFT+T)"); return 0; }
+  if (prev == -1) { setstatusmessage("Glide: there must be an earlier note in this pattern to slide from"); return 0; }
+  if ((choice < 0) || (choice > 5)) return 0;
+  f1 = freqtbllo[p[prev * 4] - FIRSTNOTE] | (freqtblhi[p[prev * 4] - FIRSTNOTE] << 8);
+  f2 = freqtbllo[p[row * 4] - FIRSTNOTE] | (freqtblhi[p[row * 4] - FIRSTNOTE] << 8);
+  if (!choice)
+  {
+    p[row * 4 + 2] = CMD_TONEPORTA;
+    p[row * 4 + 3] = 0;
+    setstatusmessage("Glide: tie note, the pitch jumps to the note without restarting the sound");
+  }
+  else
+  {
+    double tickrate = sum_tickrate();
+    int ticks = (int)(glideseconds[choice] * tickrate + 0.5), speed, pos, t;
+    char m[120];
+    if (ticks < 1) ticks = 1;
+    speed = glide_speed(f1, f2, ticks);
+    pos = makespeedtable(speed, MST_RAW, 0);
+    if (pos < 0) { setstatusmessage("Glide: the speed table is full"); return 0; }
+    p[row * 4 + 2] = CMD_TONEPORTA;
+    p[row * 4 + 3] = pos + 1;
+    t = glide_ticks(f1, f2, speed);
+    snprintf(m, sizeof m, "Glide: command 3%02X, the slide takes %d ticks (%.2f s); speedtable row %02X", pos + 1, t, t / tickrate, pos + 1);
+    setstatusmessage(m);
+  }
+  songchange();
+  return 1;
+}
+
+// SHIFT+T
+static void glidehere(void)
+{
+  int row = editorInfo.eppos, prev = glideprev(row), choice;
+  unsigned char *p = pattern[editorUndoInfo.editorInfo[editorInfo.epchn].epnum];
+  char l1[100];
+  const char *lines[3];
+
+  if (prev < 0) { pattern_glide(row, 0); return; }          // says why not
+  snprintf(l1, sizeof l1, "Slide from %s (row %d) to %s (row %d)", notename[p[prev * 4] - FIRSTNOTE], prev, notename[p[row * 4] - FIRSTNOTE], row);
+  lines[0] = l1;
+  lines[1] = "";
+  lines[2] = "How long should the slide take? (Instant = jump to the note, no restart)";
+  choice = dlg_choose("Glide into this note", lines, 3, glidelabels, 6, 3);
+  if (choice >= 0) pattern_glide(row, choice);
+}
 
 void patterncommands(void)
 {
@@ -654,6 +726,10 @@ void patterncommands(void)
 
     case KEY_G:
     if (shiftpressed) togglecommandpanel();
+    break;
+
+    case KEY_T:
+    if (shiftpressed) glidehere();
     break;
 
     case KEY_N:

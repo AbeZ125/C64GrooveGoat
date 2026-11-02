@@ -970,6 +970,20 @@ static void runautotest(void)
     if (!strcmp(scr, "loadins")) { editorInfo.editmode = EDIT_INSTRUMENT; load(); }
     if (!strcmp(scr, "clear")) clear();
     if (!strcmp(scr, "quit")) quit();
+    if (!strcmp(scr, "glide"))          // pattern 0 of voice 1: C-4, then C-5 made a glide GG_EIPOS (1-5) = how long
+    {
+      int c;
+      memset(pattern[0], 0, 16 * 4);
+      pattern[0][0] = FIRSTNOTE + 48; pattern[0][1] = 1;
+      pattern[0][4 * 4] = FIRSTNOTE + 60;
+      pattlen[0] = 8;
+      editorUndoInfo.editorInfo[0].epnum = 0;
+      editorInfo.epchn = 0;
+      editorInfo.eppos = 4;
+      fprintf(stderr, "glide done: %d\n", pattern_glide(4, getenv("GG_EIPOS") ? atoi(getenv("GG_EIPOS")) : 3));
+      fprintf(stderr, "row 4: note %02X cmd %02X data %02X; speedtable row 1: %02X %02X\n", pattern[0][16], pattern[0][18], pattern[0][19], ltable[STBL][0], rtable[STBL][0]);
+      (void)c;
+    }
     if (!strcmp(scr, "adsr")) { editorInfo.einum = 1; showadsreditor(); }
     if (!strcmp(scr, "instkey"))        // SHIFT+E in the instrument editor on the field GG_EIPOS (0-5)
     {

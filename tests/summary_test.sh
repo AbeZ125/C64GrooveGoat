@@ -25,3 +25,5 @@ cc -O2 -Wall -fsanitize=address,undefined -o build/ordhint_test tests/ordhint_te
 build/ordhint_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/scope_test tests/scope_test.c src/gscope.c -lm
 build/scope_test
+cc -O2 -Wall -fsanitize=address,undefined -o build/glide_test tests/glide_test.c src/gglide.c
+build/glide_test

@@ -120,6 +120,7 @@ static const char *patternkeys[] = {
   "SHIFT+E,R     Copy,paste effects",
   "SHIFT+H       Make hifi vib/portaspeed",
   "SHIFT+I       Invert selection/pattern",
+  "SHIFT+T       Glide (slide) into this note",
   "SHIFT+G       Show/hide the guide to the pattern commands",
   "SHIFT+J,K     Join/split pattern",
   "SHIFT+L       Mark/unmark whole pattern",
