@@ -37,6 +37,12 @@ static int writeinstrument(int n, const char *file, int *warnings)
   return 1;
 }
 
+static int isfolder(const char *path)
+{
+  struct stat st;
+  return (!stat(path, &st)) && (st.st_mode & S_IFDIR);
+}
+
 static int exists(const char *file)
 {
   struct stat st;
@@ -52,7 +58,7 @@ void furnaceexport(void)
   };
   static const char *options[] = {"This instrument", "All instruments", "Cancel"};
   char name[MAX_FILENAME], path[MAX_PATHNAME], filter[8], text[96], warn[160];
-  int choice, warnings = 0, written = 0, c, first = 0;
+  int choice, warnings = 0, written = 0, c, first = 0, hidden;
   int num = editorInfo.einum ? editorInfo.einum : 1;
 
   choice = dlg_choose("EXPORT TO FURNACE", lines, 3, options, 3, 0);
@@ -69,7 +75,15 @@ void furnaceexport(void)
   }
   else name[0] = 0;
   strcpy(filter, "*.fui");
-  if (!furnacepath[0]) snprintf(furnacepath, MAX_PATHNAME, "%s", strlen(instrpath) ? instrpath : songpath);
+  if (!furnacepath[0])
+  {
+    // a folder that Furnace's file dialog shows: not the (hidden) settings folder or the instrument library
+    const char *home = getenv("HOME");
+    char docs[MAX_PATHNAME];
+    if (!home) home = getenv("USERPROFILE");
+    snprintf(docs, sizeof docs, "%s/Documents", home ? home : ".");
+    snprintf(furnacepath, MAX_PATHNAME, "%s", (home && isfolder(docs)) ? docs : (home ? home : songpath));
+  }
   snprintf(path, MAX_PATHNAME, "%s", furnacepath);
   if (!fileselector(name, path, filter,
                     choice == 0 ? "EXPORT TO FURNACE (.fui)" : "EXPORT ALL TO FURNACE: open the folder for the files", 3))
@@ -112,12 +126,15 @@ void furnaceexport(void)
     }
   }
 
+  hidden = (strstr(furnacepath, "/.") != NULL) || (strstr(furnacepath, "\\.") != NULL);
   furnace_warningtext(warn, sizeof warn, warnings);
   if (choice == 0) snprintf(text, sizeof text, "Exported %s to Furnace", name);
   else snprintf(text, sizeof text, "Exported %d instruments to Furnace (%s ...)", written, name);
-  if (warn[0] && strlen(text) + strlen(warn) + 22 < sizeof statusmessage)
   {
-    snprintf(statusmessage, sizeof statusmessage, "%s. Not carried over: %s", text, warn);
+    char msg[sizeof statusmessage];
+    snprintf(msg, sizeof msg, "%s in %s%s", text, furnacepath, hidden ? " (a hidden folder, Furnace's file dialog may not show it)" : "");
+    if (warn[0] && strlen(msg) + strlen(warn) + 22 < sizeof msg)
+      snprintf(statusmessage, sizeof statusmessage, "%s. Not carried over: %s", msg, warn);
+    else setstatusmessage(msg);
   }
-  else setstatusmessage(text);
 }

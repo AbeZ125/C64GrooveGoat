@@ -565,6 +565,8 @@ Wave $00 the gate is also left untouched, but the table pointers and ADSR are in
 The Furnace button in the instrument panel (or SHIFT+F in the instrument editor) saves the instrument as a Furnace
 C64 instrument (.fui), which Furnace opens as an instrument (File > Open, or the instrument list). You can export the
 current instrument, or all instruments of the song into a folder (each file starts with the instrument number).
+The file dialog starts in your Documents folder (not in the hidden settings folder .groovegoat), and the folder is
+remembered for the next export. The status line names the folder the files went to.
 
 What goes over: the attack/decay and sustain/release values; the waveform (also when the wavetable changes it);
 ring and sync; the pitch steps of the wavetable (steps from the note played, and absolute notes); the pulse width
