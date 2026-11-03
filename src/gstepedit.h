@@ -9,7 +9,7 @@
 #ifndef GSTEPEDIT_H
 #define GSTEPEDIT_H
 
-#define STEP_MAX 32               // ticks that can be edited
+#define STEP_MAX 256              // ticks that can be edited (32 are shown at once, longer programs scroll)
 #define STEP_WAVE 0
 #define STEP_PULSE 1
 #define STEP_FILTER 2

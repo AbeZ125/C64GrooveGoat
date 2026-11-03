@@ -18,6 +18,7 @@
 #define PADH 6                    // draw pad height in cells
 #define PAD_TOP 4                 // pad drawing area inside the canvas, in pixels
 #define PAD_BOT (PADH * 32 - 5)
+#define VIS 32                    // ticks on screen at once; longer programs scroll
 
 void stepbutton(STEPBTN *list, int *nb, int x, int y, const char *label, int rk, int shift, int setwidth, int on, int enabled)
 {
@@ -80,15 +81,16 @@ static int removetick(STEPMODEL *m, int *sel)
   return 1;
 }
 
-static void drawstrip(const STEPMODEL *m, int sel, int cw)
+static void drawstrip(const STEPMODEL *m, int sel, int cw, int scroll)
 {
   unsigned char *cv = canvas_begin(STEP_CANVAS, cw, 2);
   int w = cw * 16, h = 64, i, k;
   int shapes = sum_pulseshapes();
+  int last = m->n < scroll + VIS ? m->n : scroll + VIS;
   if (!cv) return;
-  for (i = 0; i < m->n; i++)
+  for (i = scroll; i < last; i++)
   {
-    int x0 = i * TICKW * 16;
+    int x0 = (i - scroll) * TICKW * 16;
     if (m->mode == STEP_FILTER)
     {
       // a bar as high as the cutoff
@@ -107,24 +109,25 @@ static void drawstrip(const STEPMODEL *m, int sel, int cw)
       for (k = 2; k < h - 2; k++) plot(cv, w, h, x0 + TICKW * 16, k, 255);
     }
   }
-  for (k = 2; k < h - 2; k++) plot(cv, w, h, m->n * TICKW * 16, k, 40);
+  for (k = 2; k < h - 2; k++) plot(cv, w, h, (last - scroll) * TICKW * 16, k, 40);
 }
 
 // The draw pad: one bar per tick, as high as the value. Dragging the mouse over it sets the values (see showstepeditor).
-static void drawpad(const STEPMODEL *m, int sel, int cw)
+static void drawpad(const STEPMODEL *m, int sel, int cw, int scroll)
 {
   unsigned char *cv = canvas_begin(PAD_CANVAS, cw, PADH);
   int w = cw * 16, h = PADH * 32, i, k, q;
   int base = m->mode == STEP_WAVE ? (PAD_TOP + PAD_BOT) / 2 : PAD_BOT;
+  int last = m->n < scroll + VIS ? m->n : scroll + VIS;
   if (!cv) return;
   for (q = 0; q <= 4; q++)                         // guide lines at 0, 25, 50, 75, 100 %
   {
     int gy = PAD_BOT - q * (PAD_BOT - PAD_TOP) / 4;
-    for (k = 0; k < m->n * TICKW * 16; k += (q == 2 ? 2 : 4)) plot(cv, w, h, k, gy, q == 2 ? 110 : 55);
+    for (k = 0; k < (last - scroll) * TICKW * 16; k += (q == 2 ? 2 : 4)) plot(cv, w, h, k, gy, q == 2 ? 110 : 55);
   }
-  for (i = 0; i < m->n; i++)
+  for (i = scroll; i < last; i++)
   {
-    int x0 = i * TICKW * 16;
+    int x0 = (i - scroll) * TICKW * 16;
     double g = step_padget(m, i);
     if (g < 0)                                     // an absolute note: not drawn here
     {
@@ -145,7 +148,7 @@ static void drawpad(const STEPMODEL *m, int sel, int cw)
       for (k = 2; k < h - 2; k++) plot(cv, w, h, x0 + TICKW * 16, k, 255);
     }
   }
-  for (k = 2; k < h - 2; k++) plot(cv, w, h, m->n * TICKW * 16, k, 40);
+  for (k = 2; k < h - 2; k++) plot(cv, w, h, (last - scroll) * TICKW * 16, k, 40);
 }
 
 void showstepeditor(void)
@@ -156,7 +159,7 @@ void showstepeditor(void)
   STEPMODEL m;
   unsigned char gl[300], gr[300], savel[MAX_TABLELEN], saver[MAX_TABLELEN];
   int nrows, cap, fits, room = 0;
-  int sel = 0, live = 1, result = 0;           // result: 1 = keep, 2 = undo
+  int sel = 0, scroll = 0, vis, live = 1, result = 0;           // result: 1 = keep, 2 = undo
   int status;
   const char *msg = "";
   int win_w = 64;
@@ -188,7 +191,9 @@ void showstepeditor(void)
   }
   if (status == STEP_TOOLONG)
   {
-    const char *lines[3] = {"Step editor", "", "This program is longer than 32 ticks: edit it in the table."};
+    char text[80];
+    const char *lines[3] = {"Step editor", "", text};
+    snprintf(text, sizeof text, "This program is longer than %d ticks: edit it in the table.", STEP_MAX);
     dlg_message("Step editor", lines, 3);
     return;
   }
@@ -199,7 +204,14 @@ void showstepeditor(void)
 
   while (!result)
   {
-    int shown = m.n > 16 ? m.n : 16;            // ticks the strip and pad have room for; the window widens for long programs
+    int shown, vis2;
+    if (sel < scroll) scroll = sel;                // keep the selected tick on screen
+    if (sel >= scroll + VIS) scroll = sel - VIS + 1;
+    if (scroll > m.n - VIS) scroll = m.n - VIS;
+    if (scroll < 0) scroll = 0;
+    vis2 = m.n - scroll < VIS ? m.n - scroll : VIS;
+    vis = vis2;
+    shown = vis2 > 16 ? vis2 : 16;                // ticks the strip and pad have room for; the window widens for long programs
     int h = (table == FTBL ? 38 : (table == WTBL ? 35 : 31)) + PADH + 2, x, y = (MAX_ROWS - h) / 2 - 1;
     int x0, ly, i;
     char buf[100], t[24];
@@ -225,21 +237,22 @@ void showstepeditor(void)
     printstatus();
     dlg_drawframe(x, y, win_w, h, table == WTBL ? "WAVE STEP EDITOR" : (table == PTBL ? "PULSE STEP EDITOR" : "FILTER STEP EDITOR"));
     ly = y + 2;
-    snprintf(buf, sizeof buf, "Program at row %02X, %d tick%s", start, m.n, m.n == 1 ? "" : "s");
+    if (m.n > VIS) snprintf(buf, sizeof buf, "Row %02X, %d ticks (%d-%d)", start, m.n, scroll + 1, scroll + vis);
+    else snprintf(buf, sizeof buf, "Program at row %02X, %d tick%s", start, m.n, m.n == 1 ? "" : "s");
     printtext(x + 3, ly, MKCOL(15, C_PANEL), buf);
     printtext(x + 38, ly, MKCOL(m.n > 1 ? 15 : 3, C_PANEL), "[ - ] remove tick");
     printtext(x + 38 + 18, ly, MKCOL(m.n < STEP_MAX ? 15 : 3, C_PANEL), "[ + ]");
     ly += 2;
 
-    drawstrip(&m, sel, TICKW * shown);
+    drawstrip(&m, sel, TICKW * shown, scroll);
     canvas_draw(STEP_CANVAS, x0, ly, MKCOL(11, C_PANEL));
     printtext(x + 2, ly, MKCOL(3, C_PANEL), table == WTBL ? "wave" : (table == PTBL ? "pulse" : "cutoff"));
     printtext(x + 2, ly + 1, MKCOL(3, C_PANEL), table == FTBL ? "bars" : "shape");
     ly += 2;
 
-    for (i = 0; i < m.n; i++)
+    for (i = scroll; i < scroll + vis; i++)
     {
-      int cx = x0 + i * TICKW + 1, c = (i == sel) ? CEDIT : 15;
+      int cx = x0 + (i - scroll) * TICKW + 1, c = (i == sel) ? CEDIT : 15;
       snprintf(buf, sizeof buf, "%d", i + 1);
       printtext(cx, ly, MKCOL(i == sel ? CEDIT : 3, C_PANEL), buf);
       if (table == WTBL)
@@ -247,21 +260,21 @@ void showstepeditor(void)
         snprintf(buf, sizeof buf, "%02X", m.wave[i]);
         printtext(cx, ly + 1, MKCOL(c, C_PANEL), buf);
         notestr(t, sizeof t, m.note[i]);
-        printtext(x0 + i * TICKW, ly + 2, MKCOL(c, C_PANEL), t);
+        printtext(x0 + (i - scroll) * TICKW, ly + 2, MKCOL(c, C_PANEL), t);
       }
       else if (table == FTBL)
       {
         snprintf(buf, sizeof buf, "%d", m.cutoff[i] * 100 / 255);
         printtext(cx, ly + 1, MKCOL(c, C_PANEL), buf);
         snprintf(buf, sizeof buf, "%02X", m.cutoff[i]);
-        printtext(x0 + i * TICKW + 1, ly + 2, MKCOL(c, C_PANEL), buf);
+        printtext(x0 + (i - scroll) * TICKW + 1, ly + 2, MKCOL(c, C_PANEL), buf);
       }
       else
       {
         snprintf(buf, sizeof buf, "%d", m.width[i] * 100 / 4096);
         printtext(cx, ly + 1, MKCOL(c, C_PANEL), buf);
         snprintf(buf, sizeof buf, "%03X", m.width[i]);
-        printtext(x0 + i * TICKW, ly + 2, MKCOL(c, C_PANEL), buf);
+        printtext(x0 + (i - scroll) * TICKW, ly + 2, MKCOL(c, C_PANEL), buf);
       }
       if (m.loop == i + 1) printtext(cx, ly + 3, MKCOL(14, C_PANEL), "L");
     }
@@ -272,7 +285,7 @@ void showstepeditor(void)
     ly += 5;
 
     padrow = ly;
-    drawpad(&m, sel, TICKW * shown);
+    drawpad(&m, sel, TICKW * shown, scroll);
     canvas_draw(PAD_CANVAS, x0, padrow, MKCOL(11, C_PANEL));
     printtext(x + 2, padrow, MKCOL(3, C_PANEL), table == WTBL ? "+24" : "100%");
     printtext(x + 2, padrow + PADH / 2, MKCOL(3, C_PANEL), table == WTBL ? "  0" : " 50%");
@@ -495,7 +508,7 @@ void showstepeditor(void)
       stepbutton(btn, &nb, x + 27, ly, "UNDO ALL", KEY_ESC, 0, -1, 0, 1);
       printtext(x + 40, ly, MKCOL(3, C_PANEL), "(ENTER, ESC)");
       ly++;
-      printtext(x + 3, ly, MKCOL(3, C_PANEL), "LEFT/RIGHT choose tick   + / - add or remove a tick");
+      printtext(x + 3, ly, MKCOL(3, C_PANEL), "LEFT/RIGHT choose tick (PGUP PGDN HOME END jump)   + / - add or remove a tick");
     }
     fliptoscreen();
     getkey();
@@ -503,10 +516,10 @@ void showstepeditor(void)
 
     // drawing: press in the pad and drag; the ticks in between are filled in
     if (!(mouseb & MOUSEB_LEFT)) { drawing = 0; lasttick = -1; }
-    else if ((!prevmouseb) && (mousefx >= x0) && (mousefx < x0 + m.n * TICKW) && (mousefy >= padrow) && (mousefy < padrow + PADH)) drawing = 1;
+    else if ((!prevmouseb) && (mousefx >= x0) && (mousefx < x0 + vis * TICKW) && (mousefy >= padrow) && (mousefy < padrow + PADH)) drawing = 1;
     if (drawing)
     {
-      int t = (int)floor((mousefx - x0) / TICKW);
+      int t = scroll + (int)floor((mousefx - x0) / TICKW);
       double v = (PAD_BOT - (mousefy - padrow) * 32.0) / (PAD_BOT - PAD_TOP);
       if (t < 0) t = 0;
       if (t > m.n - 1) t = m.n - 1;
@@ -555,7 +568,7 @@ void showstepeditor(void)
             {
               int wv = (m.wave[sel] & 0xf0) ? m.wave[sel] : 0x41;
               if (step_arp(&m, sv, cnt, arphold, arpping, wv)) { sel = 0; changed = 1; msg = ""; }
-              else msg = "That is more than 32 ticks: use a shorter speed, UP instead of UP-DOWN, or fewer notes.";
+              else msg = "That is too many ticks: use a shorter speed, UP instead of UP-DOWN, or fewer notes.";
             }
             else if (arpidx < 0) msg = "Choose a chord first (MAJ, MIN, ...) or TYPE the semitones yourself.";
           }
@@ -587,6 +600,10 @@ void showstepeditor(void)
     }
     if (rawkey == KEY_LEFT && sel > 0) sel--;
     if (rawkey == KEY_RIGHT && sel < m.n - 1) sel++;
+    if (rawkey == KEY_PGUP) sel = sel > 16 ? sel - 16 : 0;
+    if (rawkey == KEY_PGDN) sel = sel + 16 < m.n ? sel + 16 : m.n - 1;
+    if (rawkey == KEY_HOME) sel = 0;
+    if (rawkey == KEY_END) sel = m.n - 1;
     if ((key == '+') || (key == '=') || (rawkey == KEY_KPPLUS)) changed |= addtick(&m, &sel);
     else if ((key == '-') || (rawkey == KEY_KPMINUS)) changed |= removetick(&m, &sel);
     if (rawkey == KEY_L) { m.loop = (m.loop == sel + 1) ? 0 : sel + 1; changed = 1; }
@@ -669,7 +686,7 @@ void showstepeditor(void)
     // mouse: a tick, or the + and - buttons
     if ((mouseb & MOUSEB_LEFT) && (!prevmouseb))
     {
-      if ((mousey >= y + 4) && (mousey <= y + 8) && (mousex >= x0) && (mousex < x0 + m.n * TICKW)) sel = (mousex - x0) / TICKW;
+      if ((mousey >= y + 4) && (mousey <= y + 8) && (mousex >= x0) && (mousex < x0 + vis * TICKW)) sel = scroll + (mousex - x0) / TICKW;
       if (mousey == y + 2)
       {
         if ((mousex >= x + 38) && (mousex < x + 38 + 17)) changed |= removetick(&m, &sel);

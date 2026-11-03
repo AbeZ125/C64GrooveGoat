@@ -995,6 +995,17 @@ static void runautotest(void)
         if (pattern_glideinfo(4, &g)) showglideeditor(&g);
       }
     }
+    if (!strcmp(scr, "stepedit"))       // a wave program of about 70 ticks in the step editor
+    {
+      static const unsigned char pl[] = {0x41, 0x0f, 0x11, 0x0f, 0x81, 0x0f, 0x0f, 0x41, 0x0f, 0xff};
+      static const unsigned char pr[] = {0x00, 0x80, 0x04, 0x80, 0x0c, 0x80, 0x80, 0x07, 0x80, 0x00};
+      memcpy(ltable[WTBL], pl, sizeof pl);
+      memcpy(rtable[WTBL], pr, sizeof pr);
+      editorInfo.einum = 1;
+      editorInfo.etnum = WTBL;
+      editorInfo.etpos = 0;
+      showstepeditor();
+    }
     if (!strcmp(scr, "adsr")) { editorInfo.einum = 1; showadsreditor(); }
     if (!strcmp(scr, "instkey"))        // SHIFT+E in the instrument editor on the field GG_EIPOS (0-5)
     {

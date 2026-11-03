@@ -54,6 +54,7 @@ int main(void)
     memset(l, 0, sizeof l); memset(r, 0, sizeof r);
     nrows = step_generate(&m, gl, gr, start);
     CHECK(nrows >= 1 && nrows <= 2 * STEP_MAX + 2);
+    if (nrows > 256 - start) { CHECK(!step_write(l, r, start, gl, gr, nrows)); continue; }   // too many rows for the table: refused, nothing changed
     CHECK(step_write(l, r, start, gl, gr, nrows));
     if (mode == STEP_WAVE)
     {
@@ -139,6 +140,7 @@ int main(void)
     }
     nrows = step_generate(&m, gl, gr, 1);
     memset(l, 0, sizeof l); memset(r, 0, sizeof r);
+    if (nrows > 255) continue;                      // does not fit in a table (the editor says so)
     CHECK(step_write(l, r, 1, gl, gr, nrows));
     CHECK(step_import(&m2, mode, l, r, 1) == STEP_OK);
     if (mode == STEP_PULSE) for (i = 0; i < m.n; i++) CHECK(m2.width[i] == m.width[i]);
@@ -163,7 +165,7 @@ int main(void)
   // arpeggios: made of presets or typed text, they play back as the intervals in the right order, and loop
   for (it = 0; it < 20000; it++)
   {
-    int semis[ARP_MAXNOTES], cnt, hold = 1 + rand() % 6, ping = rand() & 1, ok, ticks, wv = 0x41 + (rand() % 4) * 0x10, want[64], nw2 = 0, k, j;
+    int semis[ARP_MAXNOTES], cnt, hold = 1 + rand() % 6, ping = rand() & 1, ok, ticks, wv = 0x41 + (rand() % 4) * 0x10, want[STEP_MAX], nw2 = 0, k, j;
     if (it % 2) cnt = step_arp_preset(rand() % ARP_PRESETS, semis);
     else { cnt = 1 + rand() % 8; for (i = 0; i < cnt; i++) semis[i] = rand() % 60 - 20; }
     step_default(&m, STEP_WAVE);
@@ -200,6 +202,36 @@ int main(void)
     CHECK(step_arp_preset(0, s) == 3 && s[1] == 4 && s[2] == 7);   // MAJ
     CHECK(step_arp_preset(1, s) == 3 && s[1] == 3 && s[2] == 7);   // MIN
     CHECK(step_arp_ticks(3, 1, 0) == 3 && step_arp_ticks(3, 2, 1) == 8 && step_arp_ticks(2, 3, 1) == 6);
+  }
+
+  // programs longer than 32 ticks: they import, stay compact and play back tick by tick
+  {
+    int t;
+    // a 200 tick pulse sweep is one set row, one modulation row and the jump
+    step_default(&m, STEP_PULSE); m.n = 200;
+    for (t = 0; t < 200; t++) m.width[t] = 0x100 + t * 8;
+    nrows = step_generate(&m, gl, gr, 1);
+    CHECK(nrows <= 6);
+    memset(l, 0, sizeof l); memset(r, 0, sizeof r);
+    CHECK(step_write(l, r, 1, gl, gr, nrows));
+    CHECK(step_import(&m2, STEP_PULSE, l, r, 1) == STEP_OK && m2.n >= 100);
+    // a 150 tick wave program: 8 ticks of noise, then a long held pulse
+    step_default(&m, STEP_WAVE); m.n = 150;
+    for (t = 0; t < 150; t++) { m.wave[t] = t < 8 ? 0x81 : 0x41; m.note[t] = 0; }
+    nrows = step_generate(&m, gl, gr, 1);
+    CHECK(nrows <= 2 * 9 + 2);
+    memset(l, 0, sizeof l); memset(r, 0, sizeof r);
+    CHECK(step_write(l, r, 1, gl, gr, nrows));
+    CHECK(step_import(&m2, STEP_WAVE, l, r, 1) == STEP_OK);
+    CHECK(m2.n == 150);
+    for (t = 0; t < 150; t++) CHECK(m2.wave[t] == m.wave[t] && m2.note[t] == m.note[t]);
+    // an arpeggio of 4 notes up and down, 8 ticks per note: 48 ticks
+    {
+      int semis[4] = {0, 4, 7, 12};
+      step_default(&m, STEP_WAVE);
+      CHECK(step_arp(&m, semis, 4, 8, 1, 0x41) && m.n == 48);
+    }
+    CHECK(STEP_MAX >= 200);
   }
 
   printf("%d checks, %d failed\n", checks, fails);
