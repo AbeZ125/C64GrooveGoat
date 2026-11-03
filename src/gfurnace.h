@@ -52,7 +52,7 @@ int furnace_instrument(unsigned char *out, int outsize, const INSTR *ins,
 void furnace_warningtext(char *buf, int size, int warnings);
 
 // The file name for an instrument: its name with everything but letters, digits, space, - and _ taken away,
-// ".fui" added; "instrument NN.fui" when nothing is left.
+// ".fui" added; "Instr NN.fui" when nothing is left.
 void furnace_filename(char *buf, int size, const INSTR *ins, int number);
 
 #endif

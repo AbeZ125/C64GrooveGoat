@@ -965,6 +965,7 @@ static void runautotest(void)
     if (!strcmp(scr, "exportaudio")) exportaudio(0);
     if (!strcmp(scr, "exportvideo")) exportaudio(1);
     if (!strcmp(scr, "library")) instrumentlibrary();
+    if (!strcmp(scr, "furnaceall") && getenv("GG_FUIDIR")) printf("exported %d\n", furnaceexportall_to(getenv("GG_FUIDIR")));
     if (!strcmp(scr, "random")) randominstrument();
     if (!strcmp(scr, "load")) load();
     if (!strcmp(scr, "loadins")) { editorInfo.editmode = EDIT_INSTRUMENT; load(); }

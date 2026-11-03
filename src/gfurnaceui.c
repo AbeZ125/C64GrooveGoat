@@ -11,13 +11,15 @@
 
 static char furnacepath[MAX_PATHNAME];
 
+// A slot that was never used: a new instrument has the default first waveform and gate timer, but no name, no
+// envelope and no table programs
 static int instrument_is_empty(int n)
 {
   const INSTR *in = &instr[n];
   int c;
   for (c = 0; c < MAX_TABLES; c++)
     if (in->ptr[c]) return 0;
-  return !(in->name[0] || in->ad || in->sr || in->firstwave);
+  return !(in->name[0] || in->ad || in->sr);
 }
 
 // Converts instrument n and writes it to "file". Returns 1 if written; warnings gets the FURNACE_W_ bits.
@@ -26,8 +28,11 @@ static int writeinstrument(int n, const char *file, int *warnings)
   static unsigned char buf[FURNACE_MAXFILE];
   FURNACEINFO info;
   FILE *fp;
-  int size = furnace_instrument(buf, sizeof buf, &instr[n], ltable[WTBL], rtable[WTBL], ltable[PTBL], rtable[PTBL],
-                                ltable[FTBL], rtable[FTBL], &info);
+  INSTR copy = instr[n];
+  int size;
+  if (!copy.name[0]) snprintf(copy.name, sizeof copy.name, "Instr %02X", n);
+  size = furnace_instrument(buf, sizeof buf, &copy, ltable[WTBL], rtable[WTBL], ltable[PTBL], rtable[PTBL],
+                          ltable[FTBL], rtable[FTBL], &info);
   if (!size) return 0;
   fp = fopen(file, "wb");
   if (!fp) return 0;
@@ -49,6 +54,36 @@ static int exists(const char *file)
   return !stat(file, &st);
 }
 
+// Writes every used instrument into the current folder: "NN name.fui", or "Instr NN.fui" for one without a name.
+// Returns how many; first gets the name of the first file.
+static int exportall(int *warnings, char *first, int firstsize)
+{
+  int c, written = 0;
+  for (c = 1; c < MAX_INSTR; c++)
+  {
+    char base[MAX_FILENAME], file[MAX_FILENAME + 8];
+    if (instrument_is_empty(c)) continue;
+    furnace_filename(base, sizeof base, &instr[c], c);
+    if (instr[c].name[0]) snprintf(file, sizeof file, "%02X %s", c, base);
+    else snprintf(file, sizeof file, "%s", base);
+    if (writeinstrument(c, file, warnings))
+    {
+      if (!written) snprintf(first, firstsize, "%s", file);
+      written++;
+    }
+  }
+  return written;
+}
+
+// For the scripted tests (GG_SCREEN=furnaceall GG_FUIDIR=folder): all instruments into a folder, no dialogs
+int furnaceexportall_to(const char *dir)
+{
+  char first[MAX_FILENAME];
+  int warnings = 0;
+  if (chdir(dir)) return -1;
+  return exportall(&warnings, first, sizeof first);
+}
+
 void furnaceexport(void)
 {
   static const char *lines[] = {
@@ -58,7 +93,7 @@ void furnaceexport(void)
   };
   static const char *options[] = {"This instrument", "All instruments", "Cancel"};
   char name[MAX_FILENAME], path[MAX_PATHNAME], filter[8], text[96], warn[160];
-  int choice, warnings = 0, written = 0, c, first = 0, hidden;
+  int choice, warnings = 0, written = 0, hidden;
   int num = editorInfo.einum ? editorInfo.einum : 1;
 
   choice = dlg_choose("EXPORT TO FURNACE", lines, 3, options, 3, 0);
@@ -106,19 +141,7 @@ void furnaceexport(void)
   }
   else
   {
-    for (c = 1; c < MAX_INSTR; c++)
-    {
-      char base[MAX_FILENAME], file[MAX_FILENAME + 8];
-      if (instrument_is_empty(c)) continue;
-      furnace_filename(base, sizeof base, &instr[c], c);
-      snprintf(file, sizeof file, "%02X %s", c, base);
-      if (writeinstrument(c, file, &warnings))
-      {
-        if (!written) snprintf(name, sizeof name, "%s", file);
-        written++;
-      }
-    }
-    (void)first;
+    written = exportall(&warnings, name, sizeof name);
     if (!written)
     {
       setstatusmessage("No instruments to export");

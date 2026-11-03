@@ -278,7 +278,7 @@ static void handmade(void)
     strcpy(in.name, "a/b:c*?");
     furnace_filename(b, sizeof b, &in, 5); CHECK(!strcmp(b, "abc.fui"));
     strcpy(in.name, "///");
-    furnace_filename(b, sizeof b, &in, 0x1a); CHECK(!strcmp(b, "instrument 1A.fui"));
+    furnace_filename(b, sizeof b, &in, 0x1a); CHECK(!strcmp(b, "Instr 1A.fui"));
     strcpy(in.name, "  x ");
     furnace_filename(b, sizeof b, &in, 1); CHECK(!strcmp(b, "x.fui"));
   }

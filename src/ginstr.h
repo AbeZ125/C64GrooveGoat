@@ -10,6 +10,7 @@ extern INSTR instrcopybuffer;
 
 void instrumentcommands(void);
 void furnaceexport(void);
+int furnaceexportall_to(const char *dir);
 void nextinstr(void);
 void previnstr(void);
 void clearinstr(int num);

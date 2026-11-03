@@ -363,5 +363,5 @@ void furnace_filename(char *buf, int size, const INSTR *ins, int number)
   while (n > 0 && name[n - 1] == ' ') n--;
   name[n] = 0;
   if (n) snprintf(buf, size, "%s.fui", name);
-  else snprintf(buf, size, "instrument %02X.fui", number & 0xff);
+  else snprintf(buf, size, "Instr %02X.fui", number & 0xff);
 }
