@@ -9,6 +9,7 @@ extern INSTR instrcopybuffer;
 #endif
 
 void instrumentcommands(void);
+void furnaceexport(void);
 void nextinstr(void);
 void previnstr(void);
 void clearinstr(int num);

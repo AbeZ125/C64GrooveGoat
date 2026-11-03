@@ -1417,6 +1417,10 @@ static void buttoncommand(int id, int param)
     instrumentlibrary();
     editorInfo.editmode = EDIT_INSTRUMENT;
     break;
+    case BTN_FURNACE:
+    if (!editorInfo.einum) editorInfo.einum = 1;
+    furnaceexport();
+    break;
     case BTN_RANDOMINS:
     randominstrument();
     editorInfo.editmode = EDIT_INSTRUMENT;

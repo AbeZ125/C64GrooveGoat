@@ -27,3 +27,5 @@ cc -O2 -Wall -fsanitize=address,undefined -o build/scope_test tests/scope_test.c
 build/scope_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/glide_test tests/glide_test.c src/gglide.c
 build/glide_test
+cc -O2 -Wall -fsanitize=address,undefined -o build/furnace_test tests/furnace_test.c src/gfurnace.c src/gsummary.c src/gwsummary.c src/gfsummary.c -lm
+FURNACE_LIB="${FURNACE_LIB:-}" build/furnace_test

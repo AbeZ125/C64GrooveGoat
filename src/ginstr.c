@@ -126,6 +126,10 @@ void instrumentcommands(void)
     }
     break;
 
+    case KEY_F:
+    if ((shiftpressed) && (editorInfo.einum)) furnaceexport();
+    break;
+
     case KEY_E:
     // SHIFT+E on a table pointer opens the step or speed editor on the program that the instrument starts, without
     // looking for it in the table; on the Attack/Decay or Sustain/Release value it opens the ADSR sliders

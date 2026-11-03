@@ -502,6 +502,7 @@ and 64 on voice 1 repeated) so the voices stay in step when they loop.
 |  SHIFT+DEL    Delete the instrument and its table data
 |  CTRL+R       Random instrument generator (dice button in the instrument header)
 |  CTRL+L       Instrument library (Library button in the instrument header)
+|  SHIFT+F      Export the instrument to Furnace (the Furnace button under the instrument values)
 
 The test note plays on the voice where the cursor was last in the pattern editor. To hear a
 filter, play the test note on a voice that is selected in the filter control.
@@ -558,6 +559,25 @@ slowly to level A and fades out very slowly after key off.
 
 Legato: with bit $40 in the HR/Gate Timer no hard restart or gate off happens. With 1stFrame
 Wave $00 the gate is also left untouched, but the table pointers and ADSR are initialized.
+
+## Export to Furnace
+
+The Furnace button in the instrument panel (or SHIFT+F in the instrument editor) saves the instrument as a Furnace
+C64 instrument (.fui), which Furnace opens as an instrument (File > Open, or the instrument list). You can export the
+current instrument, or all instruments of the song into a folder (each file starts with the instrument number).
+
+What goes over: the attack/decay and sustain/release values; the waveform (also when the wavetable changes it);
+ring and sync; the pitch steps of the wavetable (steps from the note played, and absolute notes); the pulse width
+(the pulsetable); and the filter (passband, resonance, cutoff and whether the voice is filtered, from the filtertable).
+The program tables are replayed the way the playroutine runs them and written as Furnace macros, one value per tick:
+a program that ends keeps its last value, a program that repeats becomes a macro that loops. A macro holds at most
+255 ticks; a program that goes on longer without repeating is cut there.
+
+What does not go over: the instrument vibrato, pattern commands in the wavetable (portamento, vibrato and so on),
+the gate timer and hard restart (Furnace has its own), and a filter that is picked per voice (Furnace filters the voice
+the instrument is played on). Ring or sync that changes during the note is exported as one setting. After the export the
+status line names what was left out. Furnace uses 11 bits for the cutoff and GoatTracker 8, so cutoff values are
+exported in steps of 8.
 
 ## Instrument library
 

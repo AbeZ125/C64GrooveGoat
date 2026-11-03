@@ -110,6 +110,7 @@ static const char *buttonhint(int id)
     case BTN_LIBRARY: return "Instrument library: search, favourites, preview and load";
     case BTN_RANDOMINS: return "Random instrument generator (bass, drums, leads, pads, strings ...)";
     case BTN_STEREO: return "Editor playback: Mono or Stereo with 100%, 90%, 80% or 70% width (right click: back)";
+    case BTN_FURNACE: return "Export the instrument (or all) as a Furnace C64 instrument (.fui) - SHIFT+F";
     case BTN_ADSRGRAPH: return "ADSR envelope of the instrument: click for the sliders (also SHIFT+E on Attack/Decay or Sustain/Release)";
   }
   return NULL;
@@ -718,6 +719,8 @@ static void drawinstrument(void)
     printtext(x + INS_VAL_OFS, y, MKCOL(sel ? CEDIT : 15, C_PANEL), buf);
   }
 
+  ui_drawbutton(INS_COL2_X, INS_ROWS_Y + 4, " Furnace ", BTN_FURNACE, 0, 0);
+
   // ADSR envelope graph
   {
     int ad = instr[editorInfo.einum].ad, sr = instr[editorInfo.einum].sr;
@@ -1078,6 +1081,7 @@ static int tooltip(int id, const char **name, const char **keys)
     case BTN_LIBRARY: *name = "Instrument library"; *keys = "CTRL+L"; break;
     case BTN_RANDOMINS: *name = "Random instrument generator"; *keys = "CTRL+R"; break;
     case BTN_ADSRGRAPH: *name = "ADSR envelope"; break;
+    case BTN_FURNACE: *name = "Export to Furnace"; *keys = "SHIFT+F in the instrument editor"; break;
     case BTN_VOLUME: *name = "Output volume"; break;
     case BTN_TRANSUP: *name = "Transpose half step up"; *keys = "SHIFT+Q"; break;
     case BTN_TRANSDN: *name = "Transpose half step down"; *keys = "SHIFT+A"; break;
