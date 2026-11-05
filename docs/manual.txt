@@ -631,6 +631,33 @@ the master volume (DXY), the voices of the filter (BXY, Furnace routes the filte
 vibrato and the gate timer / hard restart. Check the result by ear in Furnace: only the notes, the timing, the tempo and
 the slide and vibrato curves were compared with the playroutine.
 
+### Importing a Furnace song
+
+"Import song (.fur)" in the Furnace dialog opens a Furnace module and makes it the song, replacing the song you have
+(it asks first if the song was changed; the new song has no file name until you save it). Only modules made of C64
+chips (6581 or 8580, one SID for every C64 chip, so a module with two chips becomes a two SID song) are accepted; a
+module with other chips is refused with a message. Modules saved by Furnace 0.6.x in its older song layout (version 157
+to 239) are read, compressed or not; one saved with the newest layout (version 240 and up) is refused and has to be
+saved again with an older version. Only the first subsong is read.
+
+What happens to the song: the orders are played out in sequence (a jump or a pattern break ends an order after its row,
+the loop of the song becomes the loop of every voice, a stop ends the song), the rows are cut into patterns of up to 128
+rows and patterns that are the same are used again. Notes come over with their instruments, note off and release become
+a key off. The speed becomes a tempo (or a funktempo for two alternating speeds), 09xx and 0Fxx changes included, the tick
+rate is matched to a speed multiplier. Slides (01xx, 02xx), portamento (03xx), vibrato (04xy) and the arpeggio (00xy,
+with its speed E0xx) become pattern commands with speedtable and wavetable rows made for them; 20xy, 21xy, 10xx, 13xx and
+the cutoff (4xxx) become the commands 5, 6, 7, B and C. Every instrument is imported as the Furnace instrument import
+does (see above), and the tables are filled for them. The arpeggio replaces the wavetable program of the instrument while it
+plays, because a note can only have one.
+
+GoatTracker has one command in a row; when a Furnace row has several the most important is kept. What does not come over
+is named on the status line: the volume column, effects without a counterpart (pulse and cutoff slides, filter mode, note
+cut and delay, ...), speeds below 3 (the lowest GoatTracker tempo), jumps that are not the loop of the song, a speed
+pattern of more than two speeds, more than 63 instruments, a tick rate that is not 50 or 60 Hz times a whole number,
+and instruments whose programs need more than 255 table rows. Notes outside the range of GoatTracker are moved by octaves.
+On the C64 files that were tried (298 modules) the notes and the timing of the imported song were checked against the
+module. Listen to the result: the instruments in particular are approximations of Furnace's macros.
+
 ## Instrument library
 
 C64 GrooveGoat comes with a library of more than 5000 ready-made instruments ("SIDGen

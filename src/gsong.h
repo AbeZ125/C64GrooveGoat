@@ -27,6 +27,7 @@ int channelhasdata(int c);
 void clearinactivechannels(void);
 
 void loadsong(void);
+int loadsongbody(const unsigned char *body, int len, int nch, int ntsc, int sidmodel, int mult);
 void mergesong(void);
 void loadinstrument(void);
 int savesong(void);

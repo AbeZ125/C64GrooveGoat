@@ -540,6 +540,27 @@ static int detectchannels(const unsigned char *body, int len)
   return 0;
 }
 
+// Makes a song of the body of a song file (the bytes after the GTS5 identifier) in memory, as loading a file does:
+// the song of the Furnace import. Returns 1 if the body was a song of nch channels, 0 if not (nothing is changed).
+int loadsongbody(const unsigned char *body, int len, int nch, int ntsc, int sidmodel, int mult)
+{
+  int c;
+  if (nch < 3 || nch > MAX_CHN || nch % 3) return 0;
+  if (parsesongbody(body, len, nch, 0) <= 0) return 0;
+  clearsong(1,1,1,1,1);
+  numsids = nch / 3;
+  numchannels = nch;
+  for (c = 0; c < MAX_SIDS; c++) sidaddr[c] = 0xd400 + c * 0x20;
+  editorInfo.ntsc = ntsc ? 1 : 0;
+  editorInfo.sidmodel = sidmodel ? 1 : 0;
+  if (mult >= 1 && mult <= 16) editorInfo.multiplier = mult;
+  clearinactivechannels();
+  parsesongbody(body, len, nch, 1);
+  countpatternlengths();
+  songchange();
+  return 1;
+}
+
 void loadsong(void)
 {
   int c;

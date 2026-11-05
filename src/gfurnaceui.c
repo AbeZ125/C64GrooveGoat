@@ -8,6 +8,8 @@
 #include "gfurnace.h"
 #include "gfurnaceimp.h"
 #include "gfurnacesong.h"
+#include "gfurnacesongimp.h"
+#include "gundo.h"
 #include "gstepedit.h"
 #include "gdialog.h"
 #include <sys/stat.h>
@@ -182,6 +184,7 @@ static void showfailure(const char *folder, int count)
   dlg_message("EXPORT TO FURNACE", lines, 3);
 }
 
+static int importinstrument(const char *file, int num, int *warnings, char *error, int errsize);
 // The row where an identical program is in the table already, or 0. Instruments share programs in GoatTracker (a pulse
 // sweep for a whole set of sounds), so an import that finds its program there uses it instead of adding a copy.
 static int makerows(int tab, const FURNACEIMPORT *imp, unsigned char *gl, unsigned char *gr, int start)
@@ -205,16 +208,11 @@ static int findsame(int tab, const FURNACEIMPORT *imp, int rows)
 // Reads a Furnace C64 instrument file into slot num: the ADSR and first waveform, and the wave, pulse and filter
 // programs as table rows after the rows that are in use. Nothing is changed if the file cannot be read or the rows do
 // not fit. Returns 1 if done; *warnings gets the FIMP_W_ bits.
-static int importinstrument(const char *file, int num, int *warnings, char *error, int errsize)
+static int importinstrument_data(const unsigned char *data, int size, const char *file, int num, int *warnings, char *error, int errsize)
 {
   static FURNACEIMPORT imp;
-  static unsigned char data[FURNACE_MAXFILE * 8];
   unsigned char gl[3][300], gr[3][300];
-  int rows[3] = {0, 0, 0}, start[3] = {0, 0, 0}, shared[3] = {0, 0, 0}, tab, size, r;
-  FILE *fp = fopen(file, "rb");
-  if (!fp) { snprintf(error, errsize, "Could not open %s", file); return 0; }
-  size = (int)fread(data, 1, sizeof data, fp);
-  fclose(fp);
+  int rows[3] = {0, 0, 0}, start[3] = {0, 0, 0}, shared[3] = {0, 0, 0}, tab, r;
   r = furnace_import(data, size, &imp);
   if (r == FIMP_NOTFUI) { snprintf(error, errsize, "That is not a Furnace instrument file (.fui)"); return 0; }
   if (r == FIMP_NOTC64) { snprintf(error, errsize, "That Furnace instrument is for another chip: only C64 instruments can be imported"); return 0; }
@@ -260,14 +258,27 @@ static int importinstrument(const char *file, int num, int *warnings, char *erro
   {
     // no name in the file: the file name without the folder and the extension
     const char *base = strrchr(file, '/'), *bs = strrchr(file, '\\');
+    char fallback[16];
     int i = 0;
     if (bs > base) base = bs;
     base = base ? base + 1 : file;
+    if (!file[0]) { snprintf(fallback, sizeof fallback, "Instr %02X", num); base = fallback; }
     while (base[i] && base[i] != '.' && i < MAX_INSTRNAMELEN - 1) { instr[num].name[i] = base[i]; i++; }
     instr[num].name[i] = 0;
   }
   *warnings = imp.warnings;
   return 1;
+}
+
+static int importinstrument(const char *file, int num, int *warnings, char *error, int errsize)
+{
+  static unsigned char data[FURNACE_MAXFILE * 8];
+  int size;
+  FILE *fp = fopen(file, "rb");
+  if (!fp) { snprintf(error, errsize, "Could not open %s", file); return 0; }
+  size = (int)fread(data, 1, sizeof data, fp);
+  fclose(fp);
+  return importinstrument_data(data, size, file, num, warnings, error, errsize);
 }
 
 #include <dirent.h>
@@ -347,6 +358,103 @@ static void furnaceimport(void)
   showinstrtable();
 }
 
+
+// Reads a Furnace module (.fur) and makes it the song. Returns 1 on success; msg gets the status text or the reason it
+// failed (nothing is changed then, except for the instruments: if some of those cannot be imported they are left empty).
+// *warnings gets the FSI_W_... bits, *skipped the number of instruments that could not be imported.
+int furnaceimportsong_from(const char *path, char *msg, int msgsize, int *warnings, int *skipped)
+{
+  static FSONGIMP imp;
+  FILE *fp;
+  unsigned char *file, *body;
+  long size;
+  int r, n, slot, ok = 0, firstfail = 1;
+  char error[160] = "", first[200] = "";
+
+  *warnings = 0; *skipped = 0;
+  fp = fopen(path, "rb");
+  if (!fp) { snprintf(msg, msgsize, "Could not open %s", path); return 0; }
+  fseek(fp, 0, SEEK_END);
+  size = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+  if (size < 64 || size > 64 * 1024 * 1024) { fclose(fp); snprintf(msg, msgsize, "That is not a Furnace module (.fur)"); return 0; }
+  file = (unsigned char *)malloc(size);
+  if (!file || fread(file, 1, size, fp) != (size_t)size) { fclose(fp); free(file); snprintf(msg, msgsize, "Could not read %s", path); return 0; }
+  fclose(fp);
+  r = furnace_songimport(file, (int)size, &imp);
+  free(file);
+  if (r != FSI_OK)
+  {
+    static const char *why[] = {"", "That is not a Furnace module (.fur), or it is damaged",
+      "That module was saved by a version of Furnace this import does not read (save it with Furnace 0.6, or as an older version)",
+      "That module has chips other than the C64: only C64 (SID) modules can be imported",
+      "That module does not fit a GoatTracker song (more than 208 patterns or 8 SIDs)"};
+    snprintf(msg, msgsize, "%s", why[r < 5 ? r : 1]);
+    return 0;
+  }
+  body = (unsigned char *)malloc(400000);
+  n = body ? furnace_songbody(&imp, body, 400000) : 0;
+  if (!n || !loadsongbody(body, n, imp.numsids * 3, imp.ntsc, imp.sidmodel, imp.multiplier))
+  {
+    free(body); fsi_free(&imp);
+    snprintf(msg, msgsize, "The song could not be made from that module");
+    return 0;
+  }
+  free(body);
+  for (slot = 1; slot <= imp.instruments; slot++)
+  {
+    static unsigned char fui[FURNACE_MAXFILE * 8];
+    int w = 0, size2 = furnace_songinstrument(&imp, slot, fui, sizeof fui);
+    if (!size2) { if (imp.instroffset[slot]) { (*skipped)++; } continue; }
+    if (!importinstrument_data(fui, size2, "", slot, &w, error, sizeof error))
+    {
+      (*skipped)++;
+      if (firstfail) { snprintf(first, sizeof first, "instrument %d: %s", slot, error); firstfail = 0; }
+    }
+  }
+  ok = 1;
+  *warnings = imp.warnings;
+  songmodified = 1;
+  songfilename[0] = 0;
+  snprintf(msg, msgsize, "Imported %d channels, %d patterns, %d instruments, %d rows%s%s", imp.numsids * 3, imp.patterns, imp.instruments, imp.rows,
+           *skipped ? "; not imported: " : "", *skipped ? first : "");
+  fsi_free(&imp);
+  return ok;
+}
+
+static void importsong(void)
+{
+  char name[MAX_FILENAME], path[MAX_PATHNAME], filter[8], msg[300], warn[300];
+  int warnings = 0, skipped = 0;
+
+  if (songmodified && !dlg_confirm("IMPORT FURNACE SONG", "This replaces the song you have. Continue?")) return;
+  name[0] = 0;
+  strcpy(filter, "*.fur");
+  if (!furnacepath[0]) snprintf(furnacepath, MAX_PATHNAME, "%s", songpath);
+  snprintf(path, MAX_PATHNAME, "%s", furnacepath);
+  if (!fileselector(name, path, filter, "IMPORT A FURNACE SONG (.fur, C64 only)", 0)) return;
+  if (!getcwd(furnacepath, MAX_PATHNAME)) return;
+  stopsong();
+  if (!furnaceimportsong_from(name, msg, sizeof msg, &warnings, &skipped))
+  {
+    const char *lines[2];
+    lines[0] = "The song could not be imported:";
+    lines[1] = msg;
+    dlg_message("IMPORT FURNACE SONG", lines, 2);
+    return;
+  }
+  do_sound_init();
+  undoInitAllAreas();
+  furnace_songimportwarningtext(warn, sizeof warn, warnings);
+  {
+    char out[sizeof statusmessage];
+    snprintf(out, sizeof out, "%s", msg);
+    if (warn[0] && strlen(out) + strlen(warn) + 30 < sizeof out)
+      snprintf(out + strlen(out), sizeof out - strlen(out), ". Not carried over: %s", warn);
+    setstatusmessage(out);
+  }
+}
+
 // Export of the whole song as a Furnace module (.fur)
 static void exportsong(void)
 {
@@ -399,18 +507,19 @@ static void exportsong(void)
 void furnaceexport(void)
 {
   static const char *lines[] = {
-    "Saves the instrument as a Furnace C64 instrument (.fui):",
-    "ADSR, waveform, ring/sync, pitch steps, pulse width and filter.",
-    "Vibrato and commands in the wavetable are not carried over. The song goes out as a .fur."
+    "Instruments (.fui) and whole songs (.fur) of the C64, to and from Furnace.",
+    "An instrument: ADSR, waveform, ring/sync, pitch steps, pulse width and filter.",
+    "A song: notes, instruments, tempo, loops and the common pattern commands."
   };
-  static const char *options[] = {"Export this instrument", "Export all instruments", "Import a .fui", "Export the song (.fur)", "Cancel"};
+  static const char *options[] = {"Export instrument", "Export all", "Import .fui", "Export song (.fur)", "Import song (.fur)", "Cancel"};
   char name[MAX_FILENAME], path[MAX_PATHNAME], filter[8], text[96], warn[160];
   int choice, warnings = 0, written = 0, hidden;
   int num = editorInfo.einum ? editorInfo.einum : 1;
 
-  choice = dlg_choose("FURNACE", lines, 3, options, 5, 0);
+  choice = dlg_choose("FURNACE", lines, 3, options, 6, 0);
   if (choice == 2) { furnaceimport(); return; }
   if (choice == 3) { exportsong(); return; }
+  if (choice == 4) { importsong(); return; }
   if ((choice != 0) && (choice != 1)) return;
 
   if (choice == 0)

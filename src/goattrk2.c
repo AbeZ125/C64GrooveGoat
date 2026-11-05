@@ -974,6 +974,13 @@ static void runautotest(void)
       int n = furnacesong_to(getenv("GG_FURFILE"), msg, sizeof msg, &w, &iw);
       fprintf(stderr, "furnacesong: %d bytes, %s, song warnings %02x, instrument warnings %02x\n", n, msg, w, iw);
     }
+    if (!strcmp(scr, "furnaceimportsong") && getenv("GG_FURFILE"))
+    {
+      char msg[400];
+      int w = 0, sk = 0, ok = furnaceimportsong_from(getenv("GG_FURFILE"), msg, sizeof msg, &w, &sk);
+      fprintf(stderr, "furnaceimportsong: %s: %s, warnings %04x, skipped %d\n", ok ? "ok" : "failed", msg, w, sk);
+      if (ok && getenv("GG_OUTSNG")) writesongfile(getenv("GG_OUTSNG"), numsids > 2);
+    }
     if (!strcmp(scr, "furnaceroundtrip") && getenv("GG_FUIDIR")) furnaceroundtrip(getenv("GG_FUIDIR"));
     if (!strcmp(scr, "random")) randominstrument();
     if (!strcmp(scr, "load")) load();
