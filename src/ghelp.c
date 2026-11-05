@@ -181,7 +181,7 @@ static const char *instkeys[] = {
   "SHIFT+I       Summary of the pulse/wave/filter table",
   "SHIFT+H       Show/hide the list of table codes",
   "SHIFT+E       Step/speed editor, ADSR sliders",
-  "SHIFT+F       Export to Furnace (.fui)",
+  "SHIFT+F       Furnace: export or import (.fui)",
   "              (instrument: pointer, AD, SR)",
   "SHIFT+L       Convert pulse/filter limit",
   "SHIFT+N       Edit name/negate value",

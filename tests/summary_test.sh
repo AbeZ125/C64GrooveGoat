@@ -29,3 +29,5 @@ cc -O2 -Wall -fsanitize=address,undefined -o build/glide_test tests/glide_test.c
 build/glide_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/furnace_test tests/furnace_test.c src/gfurnace.c src/gsummary.c src/gwsummary.c src/gfsummary.c -lm
 FURNACE_LIB="${FURNACE_LIB:-}" build/furnace_test
+cc -O2 -Wall -fsanitize=address,undefined -o build/furnaceimp_test tests/furnaceimp_test.c src/gfurnace.c src/gfurnaceimp.c src/gstepedit.c src/gsummary.c src/gwsummary.c src/gfsummary.c -lm
+FURNACE_LIB="${FURNACE_LIB:-}" build/furnaceimp_test

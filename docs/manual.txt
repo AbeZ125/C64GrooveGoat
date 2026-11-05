@@ -502,7 +502,7 @@ and 64 on voice 1 repeated) so the voices stay in step when they loop.
 |  SHIFT+DEL    Delete the instrument and its table data
 |  CTRL+R       Random instrument generator (dice button in the instrument header)
 |  CTRL+L       Instrument library (Library button in the instrument header)
-|  SHIFT+F      Export the instrument to Furnace (the Furnace button under the instrument values)
+|  SHIFT+F      Furnace: export the instrument, or import a .fui (the Furnace button under the instrument values)
 
 The test note plays on the voice where the cursor was last in the pattern editor. To hear a
 filter, play the test note on a voice that is selected in the filter control.
@@ -580,6 +580,27 @@ the gate timer and hard restart (Furnace has its own), and a filter that is pick
 the instrument is played on). Ring or sync that changes during the note is exported as one setting. After the export the
 status line names what was left out. Furnace uses 11 bits for the cutoff and GoatTracker 8, so cutoff values are
 exported in steps of 8.
+
+### Importing a Furnace instrument
+
+The same Furnace button (or SHIFT+F) also has "Import a .fui": it reads a Furnace C64 instrument file into the
+instrument slot you are on, replacing what is there (as Load Instrument does: save the song first if you want the old
+instrument back). Only C64 instruments are accepted; instruments of other chips are refused with a message.
+
+The attack/decay and sustain/release values, the waveform, ring and sync, the arpeggio or pitch macro, the pulse width
+macro and the filter (passband, resonance, cutoff, routing) become the instrument's first waveform and its wave, pulse
+and filter programs. The macros are replayed tick by tick, with their delay, speed and loop, and written as the fewest
+table rows that play the same ticks (a steady run is one row, a repeat becomes a jump). If an identical program is in
+the table already the instrument uses it, as instruments do in GoatTracker, so importing many instruments does not
+fill the tables with copies. If the rows do not fit, nothing is changed and the message says which table is full
+(SHIFT+O in the table editor frees the rows nothing uses).
+
+What does not come over, and is named on the status line: a release point in a macro (the macro plays straight
+through), ADSR and LFO type macros, volume and other macros, a filter that is routed (it then filters all three
+voices, because the table cannot filter one voice), pitch steps outside -32 to +95 semitones (clamped), programs
+longer than 256 ticks (cut), and the pulse width or pitch of the very first tick (the program starts on the second).
+An instrument that was exported from GrooveGoat and imported again plays the same tick by tick (all 3813 library
+instruments that this was tested on came back the same).
 
 ## Instrument library
 
