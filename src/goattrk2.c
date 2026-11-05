@@ -970,8 +970,9 @@ static void runautotest(void)
     if (!strcmp(scr, "furnacesong") && getenv("GG_FURFILE"))
     {
       char msg[200];
-      int n = furnacesong_to(getenv("GG_FURFILE"), msg, sizeof msg, NULL, NULL);
-      fprintf(stderr, "furnacesong: %d bytes, %s\n", n, msg);
+      int w = 0, iw = 0;
+      int n = furnacesong_to(getenv("GG_FURFILE"), msg, sizeof msg, &w, &iw);
+      fprintf(stderr, "furnacesong: %d bytes, %s, song warnings %02x, instrument warnings %02x\n", n, msg, w, iw);
     }
     if (!strcmp(scr, "furnaceroundtrip") && getenv("GG_FUIDIR")) furnaceroundtrip(getenv("GG_FUIDIR"));
     if (!strcmp(scr, "random")) randominstrument();

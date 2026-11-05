@@ -616,10 +616,20 @@ rows into patterns of one length, a multiple of the shortest common pattern leng
 gets a jump at its last row, a song that ends gets a stop. The tempo commands (03-7F) and funktempo (E) become Furnace
 speed effects (09xx and 0Fxx).
 
+The pattern commands are mapped as far as Furnace has a counterpart. Slides (1XY, 2XY), tone portamento (3XY) and
+vibrato (4XY) last one row in GoatTracker, so Furnace is told to stop them on the next row; their speeds are converted
+from the speedtable into Furnace units for the note that is playing (measured in Furnace 0.6.8.3: the slide speed is
+within a few percent and the vibrato depth within about 1 percent; the vibrato speed is a whole number in Furnace, so its
+period is rounded). 5XY and 6XY become the attack/decay and sustain/release effects, 7XY the waveform, BXY the resonance
+and CXY the cutoff. 8XY, 9XY and AXY (table pointers) on a row with a note become an extra instrument that starts at that
+table row; the exported file has one extra instrument for each different combination.
+
 What does not come over, and is named on the status line: a tempo for one channel only (80-FF), loops that start at
 different rows (lined up, the loop is approximated), loop points inside a pattern (moved to the start of one), songs
-of more than 256 orders (cut), and the other pattern commands (portamento, vibrato, wavetable pointers and so on are
-not exported yet). Only the notes and tempo are checked against the playroutine; listen to the result in Furnace.
+of more than 256 orders (cut), table pointers on a row without a note (a playing note cannot change table in Furnace),
+the master volume (DXY), the voices of the filter (BXY, Furnace routes the filter per instrument), the instrument's own
+vibrato and the gate timer / hard restart. Check the result by ear in Furnace: only the notes, the timing, the tempo and
+the slide and vibrato curves were compared with the playroutine.
 
 ## Instrument library
 

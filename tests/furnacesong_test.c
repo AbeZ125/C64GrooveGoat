@@ -206,7 +206,6 @@ int main(void)
   setup(&in);
   n = furnace_song(file, sizeof file, &in, &info);
   CHECK(n > 0);
-  printf("w=%x\n", info.warnings);
   CHECK(info.warnings & FSONG_W_LOOPS);
 
   // 4. funktempo, one channel tempo, different pattern lengths (gcd 8 -> 64 rows), 2 SIDs, a dangerous order list
@@ -245,6 +244,44 @@ int main(void)
   ord[0][0] = 1; songlen[0] = 1;
   setup(&in);
   CHECK(furnace_song(file, 100, &in, &info) == 0);
+
+  // 7. slides, tone portamento, vibrato, set commands and table pointers
+  clear();
+  newpattern(1, 16);
+  ltab[3 * MAX_TABLELEN] = 0x00; rtab[3 * MAX_TABLELEN] = 0x85;          // speedtable 1: 0x0085 per tick, 1/2 semitone at C-4
+  ltab[3 * MAX_TABLELEN + 1] = 8; rtab[3 * MAX_TABLELEN + 1] = 32;       // speedtable 2: vibrato, 8 / 32
+  ltab[3 * MAX_TABLELEN + 2] = 0x80; rtab[3 * MAX_TABLELEN + 2] = 4;     // speedtable 3: 1/16 semitone per tick
+  note(1, 0, 0x60 + 48, 1, CMD_PORTAUP, 1);
+  note(1, 1, REST, 0, 0, 0);
+  note(1, 2, REST, 0, CMD_PORTADOWN, 3);
+  note(1, 3, REST, 0, CMD_VIBRATO, 2);
+  note(1, 4, REST, 0, CMD_VIBRATO, 2);
+  note(1, 5, REST, 0, CMD_SETAD, 0x4a);
+  note(1, 6, 0x60 + 50, 0, CMD_SETWAVEPTR, 5);
+  note(1, 7, 0x60 + 50, 1, CMD_SETWAVEPTR, 5);
+  note(1, 8, 0x60 + 52, 1, CMD_TONEPORTA, 1);
+  note(1, 9, REST, 0, CMD_SETWAVE, 0x41);
+  note(1, 10, REST, 0, CMD_SETFILTERCUTOFF, 0x80);
+  note(1, 11, REST, 0, CMD_SETMASTERVOL, 3);
+  ord[0][0] = 1; songlen[0] = 1;
+  instr[1].ad = 0x09; instr[1].sr = 0xf0; instr[1].ptr[WTBL] = 1;
+  setup(&in);
+  n = furnace_song(file, sizeof file, &in, &info);
+  CHECK(n > 0 && parse(file, n, &f));
+  CHECK(f.ni == 2);                      // the instrument and the one that starts the wavetable at row 5
+  CHECK(rowat(file, n, &f, 0, 0, &r) && r.fx[0] == 0x01 && r.fv[0] >= 15 && r.fv[0] <= 17);
+  CHECK(rowat(file, n, &f, 0, 1, &r) && r.fx[0] == 0x01 && r.fv[0] == 0);          // GoatTracker stops it on the next row
+  CHECK(rowat(file, n, &f, 0, 2, &r) && r.fx[0] == 0x02 && r.fv[0] > 0);
+  CHECK(rowat(file, n, &f, 0, 3, &r) && r.fx[0] == 0x02 && r.fv[0] == 0 && r.fx[1] == 0x04);
+  CHECK(r.fv[1] >= 0x29 && r.fv[1] <= 0x3b);
+  CHECK(rowat(file, n, &f, 0, 4, &r) && r.fx[0] == 0x04 && r.fx[1] == -1);
+  CHECK(rowat(file, n, &f, 0, 5, &r) && r.fx[0] == 0x04 && r.fv[0] == 0 && r.fx[1] == 0x20 && r.fv[1] == 0x4a);
+  CHECK(rowat(file, n, &f, 0, 7, &r) && r.note == 60 + 50 && r.ins == 1);          // the variant
+  CHECK(rowat(file, n, &f, 0, 8, &r) && r.note == 60 + 52 && r.ins == -1 && r.fx[0] == 0x03 && r.fv[0] > 0);
+  CHECK(rowat(file, n, &f, 0, 9, &r) && r.fx[0] == 0x03 && r.fv[0] == 0 && r.fx[1] == 0x10 && r.fv[1] == 4);
+  CHECK(rowat(file, n, &f, 0, 10, &r) && r.fx[0] == 0x44 && r.fv[0] == 0x00);       // cutoff 0x80 << 3 = 0x400
+  CHECK(info.warnings & FSONG_W_COMMANDS);                                         // the pointer on row 6 has no note, the master volume
+  CHECK(!(info.warnings & FSONG_W_CHANTEMPO));
 
   printf("furnacesong: %d checks, %d failed\n", checks, fails);
   return fails ? 1 : 0;

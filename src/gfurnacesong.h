@@ -25,7 +25,7 @@
 #define FSONG_W_TOOLONG 0x02             // the song needs more than 256 orders: it is cut
 #define FSONG_W_LOOPUNALIGNED 0x04       // the loop point is not at the start of a pattern: moved to one
 #define FSONG_W_INSTR 0x08               // some instruments could not be exported fully (see FURNACE_W_...)
-#define FSONG_W_COMMANDS 0x10            // pattern commands that are not exported (yet)
+#define FSONG_W_COMMANDS 0x10            // pattern commands without a counterpart in Furnace
 #define FSONG_W_CHANTEMPO 0x20           // a tempo for one channel only: Furnace has one speed for all
 
 typedef struct

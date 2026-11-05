@@ -5,27 +5,33 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include "gfurnacesong.h"
+
+#define FXN 4                            // effects in a row (the file has this many effect columns)
+#ifndef FSONG_SLIDE_K
+#define FSONG_SLIDE_K 32.0              // Furnace slide units for a slide of one semitone each tick (measured in Furnace 0.6.8.3)
+#endif
 
 typedef struct
 {
   int note;                              // -1 none, 0..179 Furnace note, 180 note off
   int ins;                               // Furnace instrument number (GoatTracker's minus one), -1 none
-  int fx[3], fxval[3];                   // Furnace effects and values, fx -1 for none, filled from the first
+  int fx[FXN], fxval[FXN];                   // Furnace effects and values, fx -1 for none, filled from the first
 } CELL;
 
 static void addfx(CELL *c, int fx, int val)
 {
   int i;
-  for (i = 0; i < 3; i++)
+  for (i = 0; i < FXN; i++)
     if (c->fx[i] < 0) { c->fx[i] = fx; c->fxval[i] = val; return; }
 }
 
 static void clearcell(CELL *c)
 {
+  int i;
   c->note = -1; c->ins = -1;
-  c->fx[0] = c->fx[1] = c->fx[2] = -1;
-  c->fxval[0] = c->fxval[1] = c->fxval[2] = 0;
+  for (i = 0; i < FXN; i++) { c->fx[i] = -1; c->fxval[i] = 0; }
 }
 
 typedef struct
@@ -86,23 +92,198 @@ static int furnace_note(int n)
   return f;
 }
 
-// The pattern command of a row: tempo and funktempo become speeds. Furnace has one speed for all channels, as the
-// tempo commands of GoatTracker (03-7F, E) have; the ones for one channel only (80-FF) have no counterpart.
-static void mapcommand(const FSONGIN *in, int cmd, int data, int funk, CELL *cell, int *warn)
+// What a channel was doing, for the commands that go on until something stops them in Furnace but last one row in
+// GoatTracker
+#define MAXVARIANTS 160                  // instruments made for notes that start a table program (8XY, 9XY, AXY)
+
+typedef struct { int base, w, p, f; } VARIANT;   // base instrument and the table pointers it starts with
+
+typedef struct
 {
-  if (cmd == CMD_SETTEMPO)
+  int first;                             // Furnace number of the first variant (the one after the instruments)
+  int count;
+  VARIANT v[MAXVARIANTS];
+} VARIANTS;
+
+typedef struct
+{
+  int lastnote;                          // semitones above C-0 of the note that was played last
+  int active;                            // 0 nothing, 1 slide up, 2 slide down, 3 tone portamento, 4 vibrato
+} CHSTATE;
+
+// The SID frequency of a note, semitones above C-0
+static double sidfreq(const FSONGIN *in, int k)
+{
+  double clk = in->ntsc ? 1022727.0 : 985248.0;
+  return 16.3516 * pow(2.0, k / 12.0) * 16777216.0 / clk;
+}
+
+// A speed table entry of a slide as semitones each tick: the entry is a frequency step (so more semitones the lower the
+// note) or, with bit 15 set, a fraction of the way to the next note
+static double slidesemitones(const FSONGIN *in, int param, int k)
+{
+  int l, r;
+  unsigned speed;
+  if (!param) return 0;
+  l = in->ltable[STBL * MAX_TABLELEN + param - 1];
+  r = in->rtable[STBL * MAX_TABLELEN + param - 1];
+  speed = (l << 8) | r;
+  if (k < 0) k = 0;
+  if (k > 94) k = 94;
+  if (speed >= 0x8000) return 1.0 / (double)(1 << (r & 15));
+  return speed / (sidfreq(in, k + 1) - sidfreq(in, k));
+}
+
+static int slideunits(const FSONGIN *in, int param, int k)
+{
+  double u = slidesemitones(in, param, k) * FSONG_SLIDE_K;
+  int v = (int)(u + 0.5);
+  if (u > 0 && v < 1) v = 1;
+  return v > 255 ? 255 : v;
+}
+
+// Vibrato as vibrato() in gplay.c plays it: the pitch moves by one step each tick and the direction is flipped by a counter
+// that is compared with the left side of the speedtable entry. Returns the period in ticks and the peak swing in semitones
+// at the note k. Furnace's vibrato (04xy) is a sine of 64 / x ticks and y / 16 semitones, as measured in Furnace 0.6.8.3.
+static void vibratoshape(const FSONGIN *in, int param, int k, int *period, double *peak)
+{
+  enum { N = 600 };
+  double off[N], lo = 1e9, hi = -1e9, o = 0, speed = 0, f0;
+  unsigned char vt[N], vibtime = 0;
+  int l = 0, r = 0, cmp, i, p;
+
+  *period = 0; *peak = 0;
+  if (param)
   {
+    l = in->ltable[STBL * MAX_TABLELEN + param - 1];
+    r = in->rtable[STBL * MAX_TABLELEN + param - 1];
+  }
+  if (k < 0) k = 0;
+  if (k > 94) k = 94;
+  f0 = sidfreq(in, k);
+  speed = r;
+  cmp = l;
+  if (cmp >= 0x80)
+  {
+    cmp &= 0x7f;
+    speed = (sidfreq(in, k + 1) - f0) / (double)(1 << (r & 15));
+  }
+  if (!l && !r) return;
+  for (i = 0; i < N; i++)
+  {
+    if (vibtime < 0x80 && vibtime > cmp) vibtime ^= 0xff;
+    vibtime += 2;
+    vt[i] = vibtime;
+    if (vibtime & 1) o -= speed; else o += speed;
+    off[i] = o;
+  }
+  for (p = 1; p < N / 3; p++)
+  {
+    int ok = 1;
+    for (i = N / 2; i < N / 2 + 64; i++)
+      if (vt[i] != vt[i + p]) { ok = 0; break; }
+    if (ok) break;
+  }
+  if (p >= N / 3) return;
+  for (i = N / 2; i < N / 2 + p; i++)
+  {
+    if (off[i] < lo) lo = off[i];
+    if (off[i] > hi) hi = off[i];
+  }
+  *period = p;
+  *peak = 12.0 * log2((f0 + (hi - lo) / 2) / f0);
+}
+
+static int vibratoeffect(const FSONGIN *in, int param, int k)
+{
+  int period, x, y;
+  double peak;
+  vibratoshape(in, param, k, &period, &peak);
+  if (!period) return 0;
+  x = (int)(64.0 / period + 0.5);
+  if (x < 1) x = 1;
+  if (x > 15) x = 15;
+  y = (int)(peak * 16.0 + 0.5);
+  if (y < 1) y = 1;
+  if (y > 15) y = 15;
+  return (x << 4) | y;
+}
+
+static void stopeffect(CELL *cell, int active)
+{
+  if (active == 1) addfx(cell, 0x01, 0);
+  else if (active == 2) addfx(cell, 0x02, 0);
+  else if (active == 3) addfx(cell, 0x03, 0);
+  else if (active == 4) addfx(cell, 0x04, 0);
+}
+
+// The pattern command of a row. Tempo and funktempo become speeds (Furnace has one speed for all channels, as the tempo
+// commands 03-7F and E have; the ones for one channel only, 80-FF, have no counterpart). Slides, tone portamento and
+// vibrato are stopped by the next row in GoatTracker, so Furnace is told to stop them.
+static void mapcommand(const FSONGIN *in, int cmd, int data, int funk, CELL *cell, CHSTATE *st, VARIANTS *var, int instr, int *warn)
+{
+  int kind = cmd == CMD_PORTAUP ? 1 : cmd == CMD_PORTADOWN ? 2 : cmd == CMD_TONEPORTA ? 3 : cmd == CMD_VIBRATO ? 4 : 0;
+
+  if (st->active && st->active != kind) stopeffect(cell, st->active);
+  st->active = kind;
+  switch (cmd)
+  {
+    case CMD_DONOTHING:
+    break;
+
+    case CMD_PORTAUP:
+    addfx(cell, 0x01, slideunits(in, data, st->lastnote));
+    break;
+
+    case CMD_PORTADOWN:
+    addfx(cell, 0x02, slideunits(in, data, st->lastnote));
+    break;
+
+    case CMD_TONEPORTA:
+    addfx(cell, 0x03, data ? slideunits(in, data, st->lastnote) : 0xff);
+    break;
+
+    case CMD_VIBRATO:
+    addfx(cell, 0x04, vibratoeffect(in, data, st->lastnote));
+    break;
+
+    case CMD_SETAD:
+    addfx(cell, 0x20, data);
+    break;
+
+    case CMD_SETSR:
+    addfx(cell, 0x21, data);
+    break;
+
+    case CMD_SETWAVE:
+    addfx(cell, 0x10, (data >> 4) & 15);
+    break;
+
+    case CMD_SETFILTERCTRL:
+    addfx(cell, 0x13, (data >> 4) & 15);
+    if (!data) addfx(cell, 0x14, 0);
+    break;
+
+    case CMD_SETFILTERCUTOFF:
+    addfx(cell, 0x40 | ((data << 3) >> 8), (data << 3) & 255);
+    break;
+
+    case CMD_SETTEMPO:
     if (data >= 0x80) *warn |= FSONG_W_CHANTEMPO;
     else if (data >= 3)
     {
       addfx(cell, 0x09, data);
       if (funk) addfx(cell, 0x0f, data);
     }
-    else if (data) addfx(cell, 0x09, data == 2 ? 3 : data), (funk ? addfx(cell, 0x0f, data == 2 ? 3 : data) : (void)0);
+    else if (data)
+    {
+      addfx(cell, 0x09, data == 2 ? 3 : data);
+      if (funk) addfx(cell, 0x0f, data == 2 ? 3 : data);
+    }
     else *warn |= FSONG_W_COMMANDS;
-  }
-  else if (cmd == CMD_FUNKTEMPO)
-  {
+    break;
+
+    case CMD_FUNKTEMPO:
     if (data >= 1 && data <= MAX_TABLELEN)
     {
       int l = in->ltable[STBL * MAX_TABLELEN + data - 1], r = in->rtable[STBL * MAX_TABLELEN + data - 1];
@@ -110,15 +291,44 @@ static void mapcommand(const FSONGIN *in, int cmd, int data, int funk, CELL *cel
       addfx(cell, 0x0f, r);
     }
     else *warn |= FSONG_W_COMMANDS;
+    break;
+
+    case CMD_SETWAVEPTR:
+    case CMD_SETPULSEPTR:
+    case CMD_SETFILTERPTR:
+    {
+      // A note that starts with another table pointer is another instrument in Furnace (the note starts it)
+      int w = in->instr[instr].ptr[WTBL], p = in->instr[instr].ptr[PTBL], f = in->instr[instr].ptr[FTBL], i;
+      if (cell->note < 0 || cell->note > 179 || instr < 1 || cell->ins < 0) { *warn |= FSONG_W_COMMANDS; break; }
+      if (cmd == CMD_SETWAVEPTR) w = data;
+      else if (cmd == CMD_SETPULSEPTR) p = data;
+      else f = data;
+      for (i = 0; i < var->count; i++)
+        if (var->v[i].base == instr && var->v[i].w == w && var->v[i].p == p && var->v[i].f == f) break;
+      if (i == var->count)
+      {
+        if (var->count >= MAXVARIANTS) { *warn |= FSONG_W_COMMANDS; break; }
+        var->v[i].base = instr; var->v[i].w = w; var->v[i].p = p; var->v[i].f = f;
+        var->count++;
+      }
+      cell->ins = var->first + i;
+    }
+    break;
+
+    default:
+    // the master volume has no counterpart
+    *warn |= FSONG_W_COMMANDS;
+    break;
   }
 }
 
 // Plays the order list of a channel out
-static void unroll(const FSONGIN *in, int c, STREAM *s, int funk, int *warn)
+static void unroll(const FSONGIN *in, int c, STREAM *s, int funk, VARIANTS *var, int *warn)
 {
   const unsigned char *ord = in->order[c];
   int songlen = in->songlen[c];
   int songptr = 0, trans = 0, instr = 0, guard = 0;
+  CHSTATE st = { 0, 0 };
   int rowsofpos[MAX_SONGLEN + 2];
   int i;
 
@@ -169,11 +379,12 @@ static void unroll(const FSONGIN *in, int c, STREAM *s, int funk, int *warn)
         {
           int n = note + trans;
           cell->note = furnace_note(n);
-          if (instr >= 1 && instr < MAX_INSTR) cell->ins = instr - 1;
+          if (instr >= 1 && instr < MAX_INSTR && pp[r * 4 + 2] != CMD_TONEPORTA) cell->ins = instr - 1;
+          if (pp[r * 4 + 2] != CMD_TONEPORTA) st.lastnote = n - FIRSTNOTE;
         }
         else if (note == KEYOFF)
           cell->note = 180;
-        mapcommand(in, pp[r * 4 + 2], pp[r * 4 + 3], funk, cell, warn);
+        mapcommand(in, pp[r * 4 + 2], pp[r * 4 + 3], funk, cell, &st, var, instr, warn);
       }
     }
   }
@@ -192,7 +403,7 @@ static int sameslice(const CELL *a, const CELL *b, int n)
   {
     int e;
     if (a[i].note != b[i].note || a[i].ins != b[i].ins) return 0;
-    for (e = 0; e < 3; e++)
+    for (e = 0; e < FXN; e++)
       if (a[i].fx[e] != b[i].fx[e] || (a[i].fx[e] >= 0 && a[i].fxval[e] != b[i].fxval[e])) return 0;
   }
   return 1;
@@ -215,7 +426,7 @@ static void writepattern(BUF *b, int chan, int index, const CELL *row, int plen)
     const CELL *c = &row[r];
     int mask = 0;
     int nfx = 0, e;
-    for (e = 0; e < 3; e++) if (c->fx[e] >= 0) nfx = e + 1;
+    for (e = 0; e < FXN; e++) if (c->fx[e] >= 0) nfx = e + 1;
     if (c->note >= 0) mask |= 1;
     if (c->ins >= 0) mask |= 2;
     if (nfx == 1) mask |= 8 | 16;
@@ -267,9 +478,10 @@ static void writeadir(BUF *b, int n)
 int furnace_song(unsigned char *out, int outsize, const FSONGIN *in, FSONGINFO *info)
 {
   STREAM st[MAX_CHN];
+  static VARIANTS var;
   BUF b;
   int nch = in->numsids * 3, c, i, r, k;
-  int funk = 0, g = 0, plen, total = 0, rows, orders, lastinstr = 0;
+  int funk = 0, g = 0, plen, total = 0, rows, orders, lastinstr = 0, ninst;
   int loopfrom = -1, looping = 0, period = 1, ends = 0, loopmismatch = 0, prefix = 0;
   int **slot = NULL;                     // slot[c][order] = pattern index of that channel
   int *npat = NULL;
@@ -277,11 +489,12 @@ int furnace_song(unsigned char *out, int outsize, const FSONGIN *in, FSONGINFO *
   int *patchan = NULL, *patidx = NULL, patcount = 0;
   float hz;
   unsigned char tmp[FURNACE_MAXFILE];
-  int insptr[MAX_INSTR], patptr[4096], infosize, infopos, ptrpos, adirpos[3], flagpos[MAX_SIDS];
+  int insptr[MAX_INSTR + MAXVARIANTS + 1], patptr[4096], infosize, infopos, ptrpos, adirpos[3], flagpos[MAX_SIDS];
   int result = 0;
 
   memset(info, 0, sizeof(*info));
   memset(st, 0, sizeof(st));
+  memset(&var, 0, sizeof(var));
   b.p = out; b.size = 0; b.cap = outsize; b.failed = 0;
   if (nch < 3 || nch > MAX_CHN) { snprintf(info->error, sizeof(info->error), "no channels"); return 0; }
 
@@ -308,9 +521,12 @@ int furnace_song(unsigned char *out, int outsize, const FSONGIN *in, FSONGINFO *
         for (r2 = 0; r2 < in->pattlen[v]; r2++)
           if (in->pattern[v][r2 * 4 + 2] == CMD_FUNKTEMPO && in->pattern[v][r2 * 4 + 3]) funk = 1;
     }
-  for (c = 0; c < nch; c++) unroll(in, c, &st[c], funk, &info->warnings);
+  var.first = lastinstr;
+  for (c = 0; c < nch; c++) unroll(in, c, &st[c], funk, &var, &info->warnings);
   for (c = 0; c < nch; c++)
     if (!st[c].row) { snprintf(info->error, sizeof(info->error), "out of memory"); goto done; }
+
+  ninst = lastinstr + var.count;
 
   // Pattern length: a multiple of the gcd of the pattern lengths in use, so that every order boundary stays on one
   for (c = 0; c < nch; c++)
@@ -453,7 +669,7 @@ int furnace_song(unsigned char *out, int outsize, const FSONGIN *in, FSONGINFO *
   put16(&b, plen);
   put16(&b, orders);
   put(&b, 4); put(&b, 16);               // row highlight
-  put16(&b, lastinstr);
+  put16(&b, ninst);
   put16(&b, 0);                          // wavetables
   put16(&b, 0);                          // samples
   put32(&b, patcount);
@@ -470,11 +686,11 @@ int furnace_song(unsigned char *out, int outsize, const FSONGIN *in, FSONGINFO *
     putn(&b, compat, 20);
   }
   ptrpos = b.size;
-  for (i = 0; i < lastinstr; i++) put32(&b, 0);
+  for (i = 0; i < ninst; i++) put32(&b, 0);
   for (i = 0; i < patcount; i++) put32(&b, 0);
   for (c = 0; c < nch; c++)
     for (i = 0; i < orders; i++) put(&b, slot[c][i]);
-  for (c = 0; c < nch; c++) put(&b, 3);  // effect columns
+  for (c = 0; c < nch; c++) put(&b, FXN);  // effect columns
   for (c = 0; c < nch; c++) put(&b, 3);  // channel shown
   for (c = 0; c < nch; c++) put(&b, 0);  // collapsed
   for (c = 0; c < nch; c++) put(&b, 0);  // channel names (empty)
@@ -519,18 +735,28 @@ int furnace_song(unsigned char *out, int outsize, const FSONGIN *in, FSONGINFO *
     }
 
   // Directories of instruments, wavetables, samples
-  set32(&b, adirpos[0], b.size); writeadir(&b, lastinstr);
+  set32(&b, adirpos[0], b.size); writeadir(&b, ninst);
   set32(&b, adirpos[1], b.size); writeadir(&b, 0);
   set32(&b, adirpos[2], b.size); writeadir(&b, 0);
 
   // Instruments
-  for (i = 1; i <= lastinstr; i++)
+  for (i = 1; i <= ninst; i++)
   {
     FURNACEINFO fi;
-    int n = furnace_instrument(tmp, sizeof(tmp), &in->instr[i],
-                               in->ltable + WTBL * MAX_TABLELEN, in->rtable + WTBL * MAX_TABLELEN,
-                               in->ltable + PTBL * MAX_TABLELEN, in->rtable + PTBL * MAX_TABLELEN,
-                               in->ltable + FTBL * MAX_TABLELEN, in->rtable + FTBL * MAX_TABLELEN, &fi);
+    INSTR copy;
+    const INSTR *src = &in->instr[i <= lastinstr ? i : var.v[i - lastinstr - 1].base];
+    int n;
+    if (i > lastinstr)
+    {
+      const VARIANT *vr = &var.v[i - lastinstr - 1];
+      copy = *src;
+      copy.ptr[WTBL] = vr->w; copy.ptr[PTBL] = vr->p; copy.ptr[FTBL] = vr->f;
+      src = &copy;
+    }
+    n = furnace_instrument(tmp, sizeof(tmp), src,
+                           in->ltable + WTBL * MAX_TABLELEN, in->rtable + WTBL * MAX_TABLELEN,
+                           in->ltable + PTBL * MAX_TABLELEN, in->rtable + PTBL * MAX_TABLELEN,
+                           in->ltable + FTBL * MAX_TABLELEN, in->rtable + FTBL * MAX_TABLELEN, &fi);
     if (n < 12) { snprintf(info->error, sizeof(info->error), "instrument %d could not be written", i); goto done; }
     info->instrwarnings |= fi.warnings;
     insptr[i] = b.size;
@@ -546,11 +772,11 @@ int furnace_song(unsigned char *out, int outsize, const FSONGIN *in, FSONGINFO *
     writepattern(&b, patchan[k], patidx[k], firstrow[k], plen);
   }
   if (b.failed) { snprintf(info->error, sizeof(info->error), "the file is too big"); goto done; }
-  for (i = 1; i <= lastinstr; i++) set32(&b, ptrpos + (i - 1) * 4, insptr[i]);
-  for (k = 0; k < patcount; k++) set32(&b, ptrpos + lastinstr * 4 + k * 4, patptr[k]);
+  for (i = 1; i <= ninst; i++) set32(&b, ptrpos + (i - 1) * 4, insptr[i]);
+  for (k = 0; k < patcount; k++) set32(&b, ptrpos + ninst * 4 + k * 4, patptr[k]);
 
   info->size = b.size;
-  info->instruments = lastinstr;
+  info->instruments = ninst;
   info->patterns = patcount;
   info->orders = orders;
   info->patternlen = plen;
@@ -573,7 +799,7 @@ void furnace_songwarningtext(char *buf, int size, int warnings)
     { FSONG_W_TOOLONG, "more than 256 orders (cut)" },
     { FSONG_W_LOOPUNALIGNED, "a loop point inside a pattern (moved to the pattern start)" },
     { FSONG_W_INSTR, "instruments that are not exported fully" },
-    { FSONG_W_COMMANDS, "pattern commands that are not exported" },
+    { FSONG_W_COMMANDS, "pattern commands without a counterpart (master volume, table pointers on a row without a note)" },
     { FSONG_W_CHANTEMPO, "a tempo for one channel only (all channels follow the others)" },
   };
   int i, n = 0;
