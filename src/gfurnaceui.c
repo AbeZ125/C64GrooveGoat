@@ -7,10 +7,12 @@
 #include "goattrk2.h"
 #include "gfurnace.h"
 #include "gfurnaceimp.h"
+#include "gfurnacesong.h"
 #include "gstepedit.h"
 #include "gdialog.h"
 #include <sys/stat.h>
 #include <errno.h>
+#include <ctype.h>
 
 static char furnacepath[MAX_PATHNAME];
 static char writeerror[96];          // why the last file could not be written ("" = nothing went wrong)
@@ -109,6 +111,62 @@ int furnaceexportall_to(const char *dir)
   int warnings = 0;
   if (chdir(dir)) return -1;
   return exportall(&warnings, first, sizeof first);
+}
+
+
+// The loaded song (the subsong being edited) as a Furnace module file. Returns the bytes written, 0 on failure (msg says
+// why). warnings gets the FSONG_W_... bits, instrwarnings the FURNACE_W_... bits.
+int furnacesong_to(const char *path, char *msg, int msgsize, int *warnings, int *instrwarnings)
+{
+  static FSONGIN in;
+  static FSONGINFO info;
+  unsigned char *buf = (unsigned char *)malloc(FSONG_MAXFILE);
+  FILE *f;
+  int c, sub = editorInfo.esnum;
+  int size;
+
+  if (warnings) *warnings = 0;
+  if (instrwarnings) *instrwarnings = 0;
+  if (!buf) { snprintf(msg, msgsize, "Out of memory"); return 0; }
+  memset(&in, 0, sizeof in);
+  for (c = 0; c < MAX_CHN; c++)
+  {
+    in.order[c] = songorder[sub][c];
+    in.songlen[c] = songlen[sub][c];
+  }
+  in.pattern = pattern;
+  in.pattlen = pattlen;
+  in.numsids = numsids;
+  in.ntsc = editorInfo.ntsc;
+  in.sidmodel = editorInfo.sidmodel;
+  in.multiplier = editorInfo.multiplier;
+  if (in.multiplier < 1) in.multiplier = 1;
+  in.instr = instr;
+  in.ltable = &ltable[0][0];
+  in.rtable = &rtable[0][0];
+  in.name = songname;
+  in.author = authorname;
+  size = furnace_song(buf, FSONG_MAXFILE, &in, &info);
+  if (!size)
+  {
+    snprintf(msg, msgsize, "%s", info.error[0] ? info.error : "The song could not be exported");
+    free(buf);
+    return 0;
+  }
+  f = fopen(path, "wb");
+  if (!f || fwrite(buf, 1, size, f) != (size_t)size)
+  {
+    snprintf(msg, msgsize, "Could not write %s: %s", path, strerror(errno));
+    if (f) fclose(f);
+    free(buf);
+    return 0;
+  }
+  fclose(f);
+  free(buf);
+  if (warnings) *warnings = info.warnings;
+  if (instrwarnings) *instrwarnings = info.instrwarnings;
+  snprintf(msg, msgsize, "%d instruments, %d patterns, %d orders of %d rows", info.instruments, info.patterns, info.orders, info.patternlen);
+  return size;
 }
 
 // A message the person cannot miss: which folder, which file, and why
@@ -289,20 +347,70 @@ static void furnaceimport(void)
   showinstrtable();
 }
 
+// Export of the whole song as a Furnace module (.fur)
+static void exportsong(void)
+{
+  char name[MAX_FILENAME], path[MAX_PATHNAME], filter[8], msg[200], warn[160], iwarn[160], line[200], file[MAX_FILENAME + 8];
+  int warnings = 0, iwarnings = 0, size, i, n = 0;
+
+  for (i = 0; songname[i] && n < 40; i++)
+    if (isalnum((unsigned char)songname[i]) || songname[i] == ' ' || songname[i] == '-' || songname[i] == '_') name[n++] = songname[i];
+  name[n] = 0;
+  if (!name[0]) snprintf(name, sizeof name, "song");
+  strcpy(filter, "*.fur");
+  if (!furnacepath[0]) snprintf(furnacepath, MAX_PATHNAME, "%s", songpath);
+  snprintf(path, MAX_PATHNAME, "%s", furnacepath);
+  if (!fileselector(name, path, filter, "EXPORT SONG TO FURNACE (.fur)", 3)) return;
+  if (!getcwd(furnacepath, MAX_PATHNAME)) return;
+  snprintf(file, sizeof file, "%s", name);
+  if (!strchr(file, '.')) strcat(file, ".fur");
+  if (exists(file) && !dlg_confirm("EXPORT TO FURNACE", "The file exists. Replace it?")) return;
+  size = furnacesong_to(file, msg, sizeof msg, &warnings, &iwarnings);
+  if (!size)
+  {
+    const char *lines[3];
+    snprintf(line, sizeof line, "%s%s%s", furnacepath, "/", file);
+    lines[0] = "The song could not be exported:";
+    lines[1] = line;
+    lines[2] = msg;
+    dlg_message("EXPORT TO FURNACE", lines, 3);
+    return;
+  }
+  if (!exists(file))
+  {
+    const char *lines[2];
+    snprintf(line, sizeof line, "%s/%s", furnacepath, file);
+    lines[0] = "The file is not in the folder after writing it:";
+    lines[1] = line;
+    dlg_message("EXPORT TO FURNACE", lines, 2);
+    return;
+  }
+  furnace_songwarningtext(warn, sizeof warn, warnings);
+  furnace_warningtext(iwarn, sizeof iwarn, iwarnings);
+  {
+    char out[sizeof statusmessage];
+    snprintf(out, sizeof out, "Exported the song to %s in %s (%s)", file, furnacepath, msg);
+    if ((warn[0] || iwarn[0]) && strlen(out) + strlen(warn) + strlen(iwarn) + 40 < sizeof out)
+      snprintf(out + strlen(out), sizeof out - strlen(out), ". Not carried over: %s%s%s", warn, (warn[0] && iwarn[0]) ? ", " : "", iwarn);
+    setstatusmessage(out);
+  }
+}
+
 void furnaceexport(void)
 {
   static const char *lines[] = {
     "Saves the instrument as a Furnace C64 instrument (.fui):",
     "ADSR, waveform, ring/sync, pitch steps, pulse width and filter.",
-    "Vibrato and commands in the wavetable are not carried over. Import reads a C64 .fui."
+    "Vibrato and commands in the wavetable are not carried over. The song goes out as a .fur."
   };
-  static const char *options[] = {"Export this instrument", "Export all instruments", "Import a .fui", "Cancel"};
+  static const char *options[] = {"Export this instrument", "Export all instruments", "Import a .fui", "Export the song (.fur)", "Cancel"};
   char name[MAX_FILENAME], path[MAX_PATHNAME], filter[8], text[96], warn[160];
   int choice, warnings = 0, written = 0, hidden;
   int num = editorInfo.einum ? editorInfo.einum : 1;
 
-  choice = dlg_choose("FURNACE", lines, 3, options, 4, 0);
+  choice = dlg_choose("FURNACE", lines, 3, options, 5, 0);
   if (choice == 2) { furnaceimport(); return; }
+  if (choice == 3) { exportsong(); return; }
   if ((choice != 0) && (choice != 1)) return;
 
   if (choice == 0)

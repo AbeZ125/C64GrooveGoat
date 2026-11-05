@@ -967,6 +967,12 @@ static void runautotest(void)
     if (!strcmp(scr, "library")) instrumentlibrary();
     if (!strcmp(scr, "furnace")) { editorInfo.einum = 1; furnaceexport(); }
     if (!strcmp(scr, "furnaceall") && getenv("GG_FUIDIR")) printf("exported %d\n", furnaceexportall_to(getenv("GG_FUIDIR")));
+    if (!strcmp(scr, "furnacesong") && getenv("GG_FURFILE"))
+    {
+      char msg[200];
+      int n = furnacesong_to(getenv("GG_FURFILE"), msg, sizeof msg, NULL, NULL);
+      fprintf(stderr, "furnacesong: %d bytes, %s\n", n, msg);
+    }
     if (!strcmp(scr, "furnaceroundtrip") && getenv("GG_FUIDIR")) furnaceroundtrip(getenv("GG_FUIDIR"));
     if (!strcmp(scr, "random")) randominstrument();
     if (!strcmp(scr, "load")) load();

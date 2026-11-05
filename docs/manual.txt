@@ -602,6 +602,25 @@ longer than 256 ticks (cut), and the pulse width or pitch of the very first tick
 An instrument that was exported from GrooveGoat and imported again plays the same tick by tick (all 3813 library
 instruments that this was tested on came back the same).
 
+### Exporting a song to Furnace
+
+"Export the song (.fur)" in the same Furnace dialog writes the whole song (the subsong you are editing) as a Furnace
+module that Furnace 0.6 and newer open: one C64 chip for each SID (6581 or 8580 as the song says, PAL or NTSC, and the
+speed multiplier as the tick rate), the instruments exported as above, and the notes, instruments and note offs of the
+patterns.
+
+GoatTracker has an order list for each channel, with patterns of different lengths, repeats, transposes and its own
+loop point. Furnace has one grid. The export therefore plays each order list out into rows, lines the channels up when
+they loop with different lengths (it plays them until they come around together, up to 256 orders), and cuts the
+rows into patterns of one length, a multiple of the shortest common pattern length, up to 64 rows. A song that loops
+gets a jump at its last row, a song that ends gets a stop. The tempo commands (03-7F) and funktempo (E) become Furnace
+speed effects (09xx and 0Fxx).
+
+What does not come over, and is named on the status line: a tempo for one channel only (80-FF), loops that start at
+different rows (lined up, the loop is approximated), loop points inside a pattern (moved to the start of one), songs
+of more than 256 orders (cut), and the other pattern commands (portamento, vibrato, wavetable pointers and so on are
+not exported yet). Only the notes and tempo are checked against the playroutine; listen to the result in Furnace.
+
 ## Instrument library
 
 C64 GrooveGoat comes with a library of more than 5000 ready-made instruments ("SIDGen

@@ -31,3 +31,5 @@ cc -O2 -Wall -fsanitize=address,undefined -o build/furnace_test tests/furnace_te
 FURNACE_LIB="${FURNACE_LIB:-}" build/furnace_test
 cc -O2 -Wall -fsanitize=address,undefined -o build/furnaceimp_test tests/furnaceimp_test.c src/gfurnace.c src/gfurnaceimp.c src/gstepedit.c src/gsummary.c src/gwsummary.c src/gfsummary.c -lm
 FURNACE_LIB="${FURNACE_LIB:-}" build/furnaceimp_test
+cc -O2 -Wall -fsanitize=address,undefined -o build/furnacesong_test tests/furnacesong_test.c src/gfurnacesong.c src/gfurnace.c src/gsummary.c src/gwsummary.c src/gfsummary.c -lm
+build/furnacesong_test
